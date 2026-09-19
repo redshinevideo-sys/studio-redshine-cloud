@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Studio Redshine — Cloud Manager V3</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#090b10;--panel:#11151d;--panel2:#171c26;--line:#252c38;--text:#f3f4f6;--muted:#9ca3af;--red:#ef233c;--gold:#f5c542;--green:#31c48d;--blue:#5b8cff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,"Noto Sans Sinhala",sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at top right,#3a1118 0,#090b10 42%)}.loginbox{width:min(430px,100%);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:0 20px 70px #0008}.brand{font-size:28px;font-weight:900}.brand b{color:var(--red)}.tag{color:var(--muted);margin:6px 0 24px}.loginbox input{margin:7px 0}
+input,select,textarea{width:100%;background:#0c1017;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:11px;outline:none}input:focus,select:focus,textarea:focus{border-color:var(--red)}textarea{min-height:90px}
+.primary{background:var(--red);color:white;border:0;border-radius:9px;padding:11px 15px;font-weight:800}.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px 14px}.danger{background:#551722;color:#ffb4bd;border:1px solid #7c2634;border-radius:9px;padding:10px}
+header{height:72px;background:#0d1016;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:10}.sub{font-size:12px;color:var(--muted)}
+nav{display:flex;gap:7px;padding:10px;background:#0c0f14;border-bottom:1px solid var(--line);overflow:auto;position:sticky;top:72px;z-index:9}nav button{white-space:nowrap;background:transparent;color:var(--muted);border:1px solid transparent;padding:9px 12px;border-radius:9px}nav button.active{background:#291118;color:#fff;border-color:#5b202a}
+main{max-width:1250px;margin:auto;padding:18px}.page{display:none}.page.active{display:block}.space{display:flex;justify-content:space-between;align-items:center;gap:10px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:13px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}.kpi{font-size:25px;font-weight:900;margin-top:7px}.muted{color:var(--muted);font-size:13px}
+form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}label{font-size:13px;font-weight:700;color:#d5d8df}.full{grid-column:1/-1}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:10px;border-bottom:1px solid var(--line);font-size:13px;text-align:left}th{color:#cbd0d8;background:#0e1218}.badge{display:inline-block;padding:4px 8px;border-radius:99px;background:#272d38;color:#ddd;font-size:11px}.paid{background:#0d3b2d;color:#7df0bf}.due{background:#49370a;color:#f9d76e}.dangerbadge{background:#4a151c;color:#ff9ca8}.empty{text-align:center;padding:28px;color:var(--muted)}
+.search{max-width:360px}.hint{color:var(--muted);font-size:12px;line-height:1.5}.status{font-size:12px;color:var(--muted)}
+.modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:15px;z-index:30}.modal.open{display:flex}.modalbox{width:min(760px,100%);max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
+#toast{position:fixed;right:18px;bottom:18px;background:#151a22;border:1px solid var(--line);padding:12px 15px;border-radius:10px;display:none;z-index:40}
+.invoice{font-family:Arial,sans-serif;background:#fff;color:#111;padding:28px;max-width:850px;margin:auto}.invoice .top{display:flex;justify-content:space-between;border-bottom:3px solid #e31b23;padding-bottom:15px}.invoice h1{color:#e31b23;margin:0}.invoice table{color:#111}.invoice th{background:#eee;color:#111}.invoice td{border-bottom:1px solid #ddd}.total{text-align:right;font-size:21px;font-weight:900}
+#printArea{display:none}@media(max-width:650px){form{grid-template-columns:1fr}.full{grid-column:auto}header{position:static}nav{top:0}.space{align-items:flex-start;flex-direction:column}}
+@media print{body>*{display:none!important}#printArea{display:block!important}.invoice{display:block!important}}
+</style>
+</head>
+<body>
+<div id="login">
+  <div class="loginbox">
+    <div class="brand">Studio <b>Redshine</b></div><div class="tag">Cloud Business Manager V3</div>
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button class="primary" style="width:100%;margin-top:8px" onclick="login()">Login</button>
+    <button class="secondary" style="width:100%;margin-top:8px" onclick="signup()">Create account</button>
+    
+  </div>
+</div>
+
+<div id="app" style="display:none">
+<header><div><div class="brand">Studio <b>Redshine</b></div><div class="sub">Photo • Video • Printing • Frames — Cloud Manager</div></div><div class="row"><span id="userLabel" class="status"></span><button class="secondary" onclick="logout()">Logout</button></div></header>
+<nav id="nav"></nav>
+<main>
+<section id="dashboard" class="page active"><div class="space"><h2>Dashboard</h2><button class="primary" onclick="openInvoice()">+ New Invoice</button></div><div class="grid" id="kpis" style="margin-top:12px"></div><div class="card" style="margin-top:14px"><div class="space"><h3>Recent Invoices</h3><button class="secondary" onclick="go('invoices')">View all</button></div><div id="recent"></div></div></section>
+<section id="customers" class="page"><div class="space"><h2>Customers</h2><div class="row"><input class="search" id="customerSearch" oninput="renderCustomers()" placeholder="Search name / phone..."><button class="primary" onclick="openCustomer()">+ Customer</button></div></div><div class="card" style="margin-top:14px"><div id="customerTable"></div></div></section>
+<section id="jobs" class="page"><div class="space"><h2>Jobs / Orders</h2><button class="primary" onclick="openJob()">+ Job</button></div><div class="card"><div id="jobTable"></div></div></section>
+<section id="invoices" class="page"><div class="space"><h2>Invoices & Bills</h2><button class="primary" onclick="openInvoice()">+ Invoice</button></div><div class="card"><div id="invoiceTable"></div></div></section>
+<section id="expenses" class="page"><div class="space"><h2>Expenses / Costs</h2><button class="primary" onclick="openExpense()">+ Expense</button></div><div class="card"><div id="expenseTable"></div></div></section>
+<section id="reports" class="page"><div class="space"><h2>Monthly Income / Expense Report</h2><input id="reportMonth" type="month" onchange="renderReports()" style="max-width:180px"></div><div class="grid" id="reportKpis" style="margin-top:12px"></div><div class="card" style="margin-top:14px"><div id="reportBody"></div></div></section>
+<section id="reminders" class="page"><div class="space"><h2>WhatsApp Reminders</h2><span class="status">Outstanding invoices</span></div><div class="card"><div id="reminderTable"></div></div></section>
+<section id="settings" class="page"><h2>Settings</h2><div class="card"><form onsubmit="saveSettings(event)"><div><label>Business name</label><input name="name" id="bizName"></div><div><label>Phone</label><input name="phone" id="bizPhone"></div><div><label>Address</label><input name="address" id="bizAddress"></div><div><label>Currency</label><input name="currency" id="currency"></div><div class="full"><label>Business Logo</label><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewLogo(event)"><div id="logoPreview" class="hint" style="margin-top:8px"></div></div><div class="full"><button class="primary">Save Settings</button></div></form><hr><p class="hint">Business settings are shared across the system. Only an Administrator can change them.</p><button class="secondary" onclick="exportBackup()">Export Backup JSON</button><span id="syncStatus" class="status" style="margin-left:10px"></span></div></section>
+<section id="admin" class="page"><div class="space"><h2>Administrator</h2><span class="badge paid">ADMIN</span></div><div class="grid" id="adminKpis" style="margin-top:12px"></div><div class="card" style="margin-top:14px"><div class="space"><h3>User Accounts</h3><span class="hint">New accounts start as Staff. Only an Administrator can change roles.</span></div><div id="adminUsers"></div></div><div class="card" style="margin-top:14px"><h3>Remove Test / Old Data</h3><p class="hint">Use the Delete buttons in the tables to remove individual records. The button below removes all customers, jobs, invoices and expenses from the cloud database. This cannot be undone.</p><button class="danger" onclick="clearAllBusinessData()">Delete ALL Business Data</button></div></section>
+</main></div>
+<div class="modal" id="modal"><div class="modalbox"><div class="space"><h3 id="modalTitle"></h3><button class="secondary" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div></div>
+<div id="toast"></div><div id="printArea"></div>
+
+<script>
+/* ====== PASTE YOUR SUPABASE VALUES HERE ====== */
+const SUPABASE_URL = "https://kuzqkdrzvdktmsbfawve.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_9UsU9eBy3g37sC6vWhK6Rg_4Gk0x332";
+/* ============================================== */
+let sb=null, currentUser=null, currentProfile=null, isAdmin=false;
+let data={customers:[],jobs:[],invoices:[],expenses:[],settings:null};
+const baseNav=[['dashboard','Dashboard'],['customers','Customers'],['jobs','Jobs / Orders'],['invoices','Invoices'],['expenses','Expenses'],['reports','Reports'],['reminders','Reminders']];
+function renderNav(){
+  const items=isAdmin?[...baseNav,['settings','Settings'],['admin','Administrator']]:baseNav;
+  nav.innerHTML=items.map(x=>`<button id="n_${x[0]}" onclick="go('${x[0]}')">${x[1]}</button>`).join('');
+}
+function configured(){return SUPABASE_URL.startsWith('http')&&SUPABASE_ANON_KEY.length>20}
+function money(n){return `${data.settings?.currency||'LKR'} ${Number(n||0).toLocaleString('en-LK',{minimumFractionDigits:2,maximumFractionDigits:2})}`}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function toast(s){toastEl.textContent=s;toastEl.style.display='block';setTimeout(()=>toastEl.style.display='none',2500)}
+const toastEl=document.getElementById('toast');
+async function login(){if(!configured())return alert('Supabase URL සහ ANON KEY index.html එකේ දාන්න.');let {error}=await sb.auth.signInWithPassword({email:email.value,password:password.value});if(error)alert(error.message)}
+async function signup(){if(!configured())return alert('Supabase URL සහ ANON KEY index.html එකේ දාන්න.');let {error}=await sb.auth.signUp({email:email.value,password:password.value});if(error)alert(error.message);else alert('Account created. Email confirmation අවශ්‍ය නම් email එක confirm කරන්න.')}
+async function logout(){await sb.auth.signOut()}
+function go(id){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));document.getElementById('n_'+id).classList.add('active');render()}
+async function boot(){if(!configured()){document.getElementById('login').innerHTML='<div class="loginbox"><div class="brand">Studio <b>Redshine</b></div><h3>Cloud setup required</h3><p class="hint">Supabase URL and Publishable Key are required.</p></div>';return}
+sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+sb.auth.onAuthStateChange((event,session)=>{if(session)start(session);else{app.style.display='none';loginEl.style.display='flex'}});
+let {data:{session}}=await sb.auth.getSession();if(session)start(session)}
+const loginEl=document.getElementById('login');
+async function start(session){
+  currentUser=session.user;
+  let pr=await sb.from('profiles').select('id,email,role').eq('id',session.user.id).maybeSingle();
+  if(pr.error){alert(pr.error.message);return}
+  currentProfile=pr.data||{id:session.user.id,email:session.user.email,role:'staff'};
+  isAdmin=currentProfile.role==='admin';
+  loginEl.style.display='none';app.style.display='block';
+  userLabel.textContent=`${session.user.email} · ${isAdmin?'Administrator':'Staff'}`;
+  renderNav();await loadAll();go('dashboard');
+}
+async function loadAll(){
+  syncStatus.textContent='Syncing...';
+  let [c,j,i,e,s]=await Promise.all([
+    sb.from('customers').select('*').order('created_at',{ascending:false}),
+    sb.from('jobs').select('*').order('date',{ascending:false}),
+    sb.from('invoices').select('*').order('created_at',{ascending:false}),
+    sb.from('expenses').select('*').order('date',{ascending:false}),
+    sb.from('business_settings').select('*').eq('id',1).maybeSingle()
+  ]);
+  for(const x of [c,j,i,e,s])if(x.error){console.error(x.error);toast(x.error.message)}
+  data={customers:c.data||[],jobs:j.data||[],invoices:i.data||[],expenses:e.data||[],settings:s.data||{name:'Studio Redshine',phone:'074 3 17 17 18',address:'',currency:'LKR',logo_data:''}};
+  bizName.value=data.settings.name||'Studio Redshine';bizPhone.value=data.settings.phone||'';bizAddress.value=data.settings.address||'';currency.value=data.settings.currency||'LKR';logoPreview.innerHTML=data.settings.logo_data?`<img src="${data.settings.logo_data}" style="max-height:70px;max-width:180px;border-radius:8px;border:1px solid var(--line)"><br><span>Current logo</span>`:'No logo uploaded';
+  syncStatus.textContent='Cloud synced ✓';
+  if(isAdmin) renderAdmin();
+}
+function customerName(id){return data.customers.find(x=>x.id===id)?.name||'Unknown'}function customer(id){return data.customers.find(x=>x.id===id)||{}}
+function openModal(t,b){modalTitle.textContent=t;modalBody.innerHTML=b;modal.classList.add('open')}function closeModal(){modal.classList.remove('open')}
+function openCustomer(c=null){openModal(c?'Edit Customer':'New Customer',`<form onsubmit="saveCustomer(event,'${c?.id||''}')"><div><label>Name</label><input name="name" required value="${esc(c?.name)}"></div><div><label>Phone / WhatsApp</label><input name="phone" value="${esc(c?.phone)}"></div><div><label>Email</label><input name="email" value="${esc(c?.email)}"></div><div><label>Address</label><input name="address" value="${esc(c?.address)}"></div><div class="full"><button class="primary">Save</button></div></form>`)}
+async function saveCustomer(e,id){e.preventDefault();let o=Object.fromEntries(new FormData(e.target));let q=id?sb.from('customers').update(o).eq('id',id):sb.from('customers').insert(o);let {error}=await q;if(error)return alert(error.message);closeModal();await loadAll()}
+function openJob(j=null){let opts=data.customers.map(c=>`<option value="${c.id}" ${j?.customer_id===c.id?'selected':''}>${esc(c.name)} — ${esc(c.phone)}</option>`).join('');openModal(j?'Edit Job':'New Job',`<form onsubmit="saveJob(event,'${j?.id||''}')"><div><label>Customer</label><select name="customer_id" required>${opts}</select></div><div><label>Service</label><select name="service"><option>Photography</option><option>Videography</option><option>Printing</option><option>Photo Frame</option><option>Wedding Package</option><option>Other</option></select></div><div><label>Event / Job date</label><input type="date" name="date" value="${j?.date||''}"></div><div><label>Total agreed</label><input type="number" step=".01" name="total" value="${j?.total||0}"></div><div><label>Cost</label><input type="number" step=".01" name="cost" value="${j?.cost||0}"></div><div><label>Status</label><select name="status"><option>Booked</option><option>In Progress</option><option>Completed</option><option>Delivered</option><option>Cancelled</option></select></div><div class="full"><label>Notes</label><textarea name="notes">${esc(j?.notes)}</textarea></div><div class="full"><button class="primary">Save Job</button></div></form>`)}
+async function saveJob(e,id){e.preventDefault();let o=Object.fromEntries(new FormData(e.target));o.total=+o.total;o.cost=+o.cost;let q=id?sb.from('jobs').update(o).eq('id',id):sb.from('jobs').insert(o);let {error}=await q;if(error)return alert(error.message);closeModal();await loadAll()}
+function invoiceItemRow(it){return `<div class="invoice-item-row row" style="margin-bottom:8px;align-items:end"><div style="flex:2;min-width:180px"><label>Description</label><input class="item-name" value="${esc(it.name||'')}" placeholder="e.g. Wedding Photography" oninput="updateInvoiceTotals()"></div><div style="width:110px"><label>Qty</label><input class="item-qty" type="number" min="0.01" step="0.01" value="${Number(it.qty)||1}" oninput="updateInvoiceTotals()"></div><div style="width:150px"><label>Unit Price</label><input class="item-price" type="number" min="0" step="0.01" value="${Number(it.price)||0}" oninput="updateInvoiceTotals()"></div><button type="button" class="danger" onclick="removeInvoiceItem(this)">Remove</button></div>`}
+function nextInvoiceNo(){const y=new Date().getFullYear();const nums=data.invoices.map(i=>String(i.invoice_no||'').match(/^INV-(\d{4})-(\d+)$/)).filter(Boolean).filter(m=>+m[1]===y).map(m=>+m[2]);const n=(nums.length?Math.max(...nums):0)+1;return `INV-${y}-${String(n).padStart(4,'0')}`}
+function openInvoice(inv=null){let opts=data.customers.map(c=>`<option value="${c.id}" ${inv?.customer_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('');let items=Array.isArray(inv?.items)&&inv.items.length?inv.items:[{name:'',qty:1,price:0}];let invNo=inv?.invoice_no||nextInvoiceNo();openModal(inv?'Edit Invoice':'New Invoice',`<form id="invoiceForm" onsubmit="saveInvoice(event,'${inv?.id||''}')"><div><label>Invoice No.</label><input name="invoice_no" value="${esc(invNo)}" readonly></div><div><label>Customer</label><select name="customer_id" required>${opts}</select></div><div><label>Due date</label><input type="date" name="due_date" value="${inv?.due_date||''}"></div><div><label>Payment method</label><select name="payment_method"><option ${inv?.payment_method==='Cash'?'selected':''}>Cash</option><option ${inv?.payment_method==='Bank Transfer'?'selected':''}>Bank Transfer</option><option ${inv?.payment_method==='Card'?'selected':''}>Card</option><option ${inv?.payment_method==='Online'?'selected':''}>Online</option><option ${inv?.payment_method==='Other'?'selected':''}>Other</option></select></div><div id="invoiceItems" class="full"><div class="space"><label>Invoice Items</label><button type="button" class="secondary" onclick="addInvoiceItem()">+ Add Item</button></div><div id="invoiceItemRows" style="margin-top:8px">${items.map(invoiceItemRow).join('')}</div><div class="hint" style="margin-top:7px">Description + quantity + unit price. Totals update instantly.</div></div><div><label>Discount</label><input id="invoiceDiscount" type="number" min="0" step="0.01" name="discount" value="${Number(inv?.discount)||0}" oninput="updateInvoiceTotals()"></div><div><label>Paid / Advance</label><input id="invoicePaid" type="number" min="0" step="0.01" name="paid" value="${Number(inv?.paid)||0}" oninput="updateInvoiceTotals()"></div><div class="full"><label>Notes</label><textarea name="notes" placeholder="Thank you / payment note / delivery note">${esc(inv?.notes)}</textarea></div><div class="full card" style="padding:12px;margin-top:2px"><div class="space"><span>Subtotal</span><b id="invoiceSubtotal">${money(items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0))}</b></div><div class="space"><span>Discount</span><b id="invoiceDiscountView">${money(Number(inv?.discount)||0)}</b></div><div class="space"><span>Total</span><b id="invoiceTotal">${money(Math.max(0,items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0)-(Number(inv?.discount)||0)))}</b></div><div class="space"><span>Balance</span><b id="invoiceBalance">${money(Math.max(0,items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0)-(Number(inv?.discount)||0)-(Number(inv?.paid)||0)))}</b></div></div><div class="full"><button class="primary">Save Invoice</button></div></form>`);updateInvoiceTotals()}
+function addInvoiceItem(){const box=document.getElementById('invoiceItemRows');if(!box)return;box.insertAdjacentHTML('beforeend',invoiceItemRow({name:'',qty:1,price:0}));updateInvoiceTotals()}
+function removeInvoiceItem(btn){const rows=document.querySelectorAll('#invoiceItemRows .invoice-item-row');if(rows.length<=1){alert('At least one invoice item is required.');return}btn.closest('.invoice-item-row').remove();updateInvoiceTotals()}
+function readInvoiceItems(){return [...document.querySelectorAll('#invoiceItemRows .invoice-item-row')].map(row=>({name:row.querySelector('.item-name').value.trim(),qty:Math.max(0,Number(row.querySelector('.item-qty').value)||0),price:Math.max(0,Number(row.querySelector('.item-price').value)||0)})).filter(x=>x.name||x.price>0)}
+function updateInvoiceTotals(){const items=readInvoiceItems();const subtotal=items.reduce((s,x)=>s+x.qty*x.price,0);const discount=Math.max(0,Number(document.getElementById('invoiceDiscount')?.value)||0);const paid=Math.max(0,Number(document.getElementById('invoicePaid')?.value)||0);const total=Math.max(0,subtotal-discount);const balance=Math.max(0,total-paid);const a=document.getElementById('invoiceSubtotal'),b=document.getElementById('invoiceDiscountView'),c=document.getElementById('invoiceTotal'),d=document.getElementById('invoiceBalance');if(a)a.textContent=money(subtotal);if(b)b.textContent=money(discount);if(c)c.textContent=money(total);if(d)d.textContent=money(balance)}
+async function saveInvoice(e,id){e.preventDefault();let f=new FormData(e.target),o=Object.fromEntries(f);o.items=readInvoiceItems();if(!o.items.length)return alert('Please add at least one item with a description or price.');o.invoice_no=o.invoice_no||nextInvoiceNo();o.discount=Math.max(0,Number(o.discount)||0);o.paid=Math.max(0,Number(o.paid)||0);o.total=Math.max(0,o.items.reduce((s,x)=>s+x.qty*x.price,0)-o.discount);o.balance=Math.max(0,o.total-o.paid);o.status=o.balance<=0?'Paid':o.paid?'Partial':'Unpaid';let result=id?await sb.from('invoices').update(o).eq('id',id):await sb.from('invoices').insert(o);if(result.error)return alert(result.error.message);closeModal();await loadAll();render();toast('Invoice saved ✓')}
+function openExpense(x=null){openModal(x?'Edit Expense':'New Expense',`<form onsubmit="saveExpense(event,'${x?.id||''}')"><div><label>Date</label><input type="date" name="date" value="${x?.date||new Date().toISOString().slice(0,10)}"></div><div><label>Category</label><select name="category"><option>Equipment</option><option>Printing</option><option>Travel</option><option>Staff</option><option>Other</option></select></div><div class="full"><label>Description</label><input name="description" value="${esc(x?.description)}"></div><div><label>Amount</label><input type="number" step=".01" name="amount" value="${x?.amount||0}" required></div><div class="full"><button class="primary">Save Expense</button></div></form>`)}
+async function saveExpense(e,id){e.preventDefault();let o=Object.fromEntries(new FormData(e.target));o.amount=+o.amount;let q=id?sb.from('expenses').update(o).eq('id',id):sb.from('expenses').insert(o);let {error}=await q;if(error)return alert(error.message);closeModal();await loadAll()}
+function render(){renderDashboard();renderCustomers();renderJobs();renderInvoices();renderExpenses();renderReports();renderReminders()}
+function renderDashboard(){let sales=data.invoices.reduce((s,x)=>s+x.total,0),paid=data.invoices.reduce((s,x)=>s+x.paid,0),cost=data.expenses.reduce((s,x)=>s+x.amount,0)+data.jobs.reduce((s,x)=>s+x.cost,0);kpis.innerHTML=[['Sales',money(sales)],['Collected',money(paid)],['Outstanding',money(sales-paid)],['Result',money(sales-cost)]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join('');let r=data.invoices.slice(0,5);recent.innerHTML=r.length?`<table><tr><th>No</th><th>Customer</th><th>Total</th><th>Status</th><th></th></tr>${r.map(i=>`<tr><td>${i.invoice_no||i.id.slice(0,8)}</td><td>${esc(customerName(i.customer_id))}</td><td>${money(i.total)}</td><td><span class="badge">${i.status}</span></td><td><button class="secondary" onclick="printInvoice('${i.id}')">PDF / Print</button></td></tr>`).join('')}</table>`:'<div class="empty">No invoices yet.</div>'}
+function renderCustomers(){let q=(customerSearch.value||'').toLowerCase();let r=data.customers.filter(c=>(c.name+' '+(c.phone||'')+' '+(c.email||'')).toLowerCase().includes(q));customerTable.innerHTML=r.length?`<table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Actions</th></tr>${r.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${esc(c.email)}</td><td><button class="secondary" onclick="openCustomer(data.customers.find(x=>x.id==='${c.id}'))">Edit</button>${isAdmin?` <button class="danger" onclick="deleteRecord('customers','${c.id}','customer')">Delete</button>`:''}</td></tr>`).join('')}</table>`:'<div class="empty">No customers.</div>'}
+function renderJobs(){jobTable.innerHTML=data.jobs.length?`<table><tr><th>Customer</th><th>Service</th><th>Date</th><th>Total</th><th>Cost</th><th>Status</th><th>Actions</th></tr>${data.jobs.map(j=>`<tr><td>${esc(customerName(j.customer_id))}</td><td>${esc(j.service)}</td><td>${j.date||''}</td><td>${money(j.total)}</td><td>${money(j.cost)}</td><td><span class="badge">${esc(j.status)}</span></td><td><button class="secondary" onclick="openJob(data.jobs.find(x=>x.id==='${j.id}'))">Edit</button>${isAdmin?` <button class="danger" onclick="deleteRecord('jobs','${j.id}','job')">Delete</button>`:''}</td></tr>`).join('')}</table>`:'<div class="empty">No jobs.</div>'}
+function renderInvoices(){invoiceTable.innerHTML=data.invoices.length?`<table><tr><th>No</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th>Method</th><th>Actions</th></tr>${data.invoices.map(i=>`<tr><td>${i.invoice_no||i.id.slice(0,8)}</td><td>${esc(customerName(i.customer_id))}</td><td>${money(i.total)}</td><td>${money(i.paid)}</td><td>${money(i.balance)}</td><td>${i.due_date||'-'}</td><td>${esc(i.payment_method||'-')}</td><td><button class="secondary" onclick="openInvoice(data.invoices.find(x=>x.id==='${i.id}'))">Edit</button> <button class="secondary" onclick="printInvoice('${i.id}')">PDF</button> <button class="secondary" onclick="waReminder('${i.id}')">WhatsApp</button>${isAdmin?` <button class="danger" onclick="deleteRecord('invoices','${i.id}','invoice')">Delete</button>`:''}</td></tr>`).join('')}</table>`:'<div class="empty">No invoices.</div>'}
+function renderExpenses(){expenseTable.innerHTML=data.expenses.length?`<table><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr>${data.expenses.map(x=>`<tr><td>${x.date}</td><td>${esc(x.category)}</td><td>${esc(x.description)}</td><td>${money(x.amount)}</td><td><button class="secondary" onclick="openExpense(data.expenses.find(v=>v.id==='${x.id}'))">Edit</button>${isAdmin?` <button class="danger" onclick="deleteRecord('expenses','${x.id}','expense')">Delete</button>`:''}</td></tr>`).join('')}</table>`:'<div class="empty">No expenses.</div>'}
+function renderReports(){let m=reportMonth.value||new Date().toISOString().slice(0,7);reportMonth.value=m;let inc=data.invoices.filter(x=>(x.created_at||'').slice(0,7)===m).reduce((s,x)=>s+x.total,0),col=data.invoices.filter(x=>(x.created_at||'').slice(0,7)===m).reduce((s,x)=>s+x.paid,0),ex=data.expenses.filter(x=>x.date?.slice(0,7)===m).reduce((s,x)=>s+x.amount,0),jc=data.jobs.filter(x=>x.date?.slice(0,7)===m).reduce((s,x)=>s+x.cost,0);reportKpis.innerHTML=[['Income',money(inc)],['Collected',money(col)],['Expenses',money(ex+jc)],['Net',money(inc-ex-jc)]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join('');reportBody.innerHTML=`<p><b>Month:</b> ${m}</p><p>Invoice income: <b>${money(inc)}</b></p><p>Cash collected: <b>${money(col)}</b></p><p>Expenses: <b>${money(ex+jc)}</b></p><p>Net result: <b>${money(inc-ex-jc)}</b></p>`}
+function renderReminders(){let r=data.invoices.filter(i=>i.balance>0);reminderTable.innerHTML=r.length?`<table><tr><th>Customer</th><th>Invoice</th><th>Balance</th><th>Due</th><th></th></tr>${r.map(i=>`<tr><td>${esc(customerName(i.customer_id))}</td><td>${i.invoice_no||''}</td><td>${money(i.balance)}</td><td>${i.due_date||'-'}</td><td>${esc(i.payment_method||'-')}</td><td><button class="secondary" onclick="waReminder('${i.id}')">Send WhatsApp</button></td></tr>`).join('')}</table>`:'<div class="empty">No outstanding invoices 🎉</div>'}
+function printInvoice(id){let i=data.invoices.find(x=>x.id===id),c=customer(i.customer_id),logo=data.settings.logo_data?`<img src="${data.settings.logo_data}" style="max-height:75px;max-width:190px;object-fit:contain">`:'';printArea.innerHTML=`<div class="invoice"><div class="top"><div>${logo}<h1>${esc(data.settings.name)}</h1><div>${esc(data.settings.address||'')}</div><div>${esc(data.settings.phone||'')}</div></div><div style="text-align:right"><b style="font-size:20px">INVOICE</b><br><b>${esc(i.invoice_no||'')}</b><br>${new Date(i.created_at||Date.now()).toLocaleDateString('en-GB')}<br>${i.due_date?'Due: '+esc(i.due_date):''}</div></div><h3>Bill To</h3><p><b>${esc(c.name)}</b><br>${esc(c.phone||'')}<br>${esc(c.email||'')}<br>${esc(c.address||'')}</p><table><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>${i.items.map(x=>`<tr><td>${esc(x.name)}</td><td>${x.qty}</td><td>${money(x.price)}</td><td>${money(x.qty*x.price)}</td></tr>`).join('')}</table><div style="margin-top:15px;text-align:right"><div>Subtotal: <b>${money(i.items.reduce((s,x)=>s+x.qty*x.price,0))}</b></div><div>Discount: <b>${money(i.discount)}</b></div><div style="font-size:20px;margin-top:6px">Total: <b>${money(i.total)}</b></div><div>Paid / Advance: <b>${money(i.paid)}</b></div><div class="total">Balance: ${money(i.balance)}</div></div><p>Payment method: <b>${esc(i.payment_method||'')}</b></p>${i.notes?`<p><b>Notes:</b> ${esc(i.notes)}</p>`:''}<p style="margin-top:55px;border-top:1px solid #ddd;padding-top:12px">Thank you for choosing ${esc(data.settings.name)}.</p></div>`;window.print()}
+function waReminder(id){let i=data.invoices.find(x=>x.id===id),c=customer(i.customer_id);let p=(c.phone||'').replace(/\D/g,'');if(p.startsWith('0'))p='94'+p.slice(1);if(!p)return alert('Customer phone number missing');let msg=`Hello ${c.name}, this is a friendly reminder from ${data.settings.name}. Invoice ${i.invoice_no||''} has an outstanding balance of ${money(i.balance)}${i.due_date?' and the due date is '+i.due_date:''}. Thank you.`;window.open(`https://wa.me/${p}?text=${encodeURIComponent(msg)}`,'_blank')}
+function previewLogo(e){const f=e.target.files?.[0];if(!f)return;if(f.size>1024*1024)return alert('Please use a logo smaller than 1 MB.');const r=new FileReader();r.onload=()=>{data.settings.logo_data=r.result;logoPreview.innerHTML=`<img src="${r.result}" style="max-height:70px;max-width:180px;border-radius:8px;border:1px solid var(--line)"><br><span>New logo selected. Click Save Settings.</span>`};r.readAsDataURL(f)}
+async function saveSettings(e){e.preventDefault();if(!isAdmin)return alert('Administrator access required.');let o=Object.fromEntries(new FormData(e.target));o.id=1;o.logo_data=data.settings?.logo_data||'';let {error}=await sb.from('business_settings').upsert(o,{onConflict:'id'});if(error)alert(error.message);else{toast('Business settings saved ✓');await loadAll()}}
+
+function renderAdmin(){
+  if(!isAdmin)return;
+  adminKpis.innerHTML=[['Customers',data.customers.length],['Jobs',data.jobs.length],['Invoices',data.invoices.length],['Expenses',data.expenses.length]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join('');
+  sb.from('profiles').select('id,email,role,created_at').order('created_at',{ascending:true}).then(({data:rows,error})=>{
+    if(error){adminUsers.innerHTML=`<div class="hint">${esc(error.message)}</div>`;return}
+    adminUsers.innerHTML=rows?.length?`<table><tr><th>Email</th><th>Role</th><th>Created</th><th>Action</th></tr>${rows.map(u=>`<tr><td>${esc(u.email||'')}</td><td><span class="badge ${u.role==='admin'?'paid':''}">${esc(u.role)}</span></td><td>${u.created_at?new Date(u.created_at).toLocaleDateString():''}</td><td>${u.id===currentUser?.id?'<span class="status">Current account</span>':`<select onchange="changeUserRole('${u.id}',this.value)"><option value="staff" ${u.role==='staff'?'selected':''}>Staff</option><option value="admin" ${u.role==='admin'?'selected':''}>Administrator</option></select>`}</td></tr>`).join('')}</table>`:'<div class="empty">No user accounts.</div>';
+  });
+}
+async function changeUserRole(id,role){
+  if(!isAdmin)return alert('Administrator access required.');
+  if(id===currentUser?.id)return alert('For safety, change your own role from SQL only.');
+  if(!confirm(`Change this account to ${role}?`))return;
+  let {error}=await sb.rpc('set_user_role',{target_user:id,new_role:role});
+  if(error)return alert(error.message);
+  toast('User role updated ✓');renderAdmin();
+}
+async function deleteRecord(table,id,label){
+  if(!isAdmin)return alert('Administrator access required.');
+  if(!confirm(`Delete this ${label}? This cannot be undone.`))return;
+  let {error}=await sb.from(table).delete().eq('id',id);
+  if(error)return alert(error.message);
+  toast(`${label} deleted ✓`);await loadAll();render();
+}
+async function clearAllBusinessData(){
+  if(!isAdmin)return alert('Administrator access required.');
+  if(!confirm('Delete ALL customers, jobs, invoices and expenses from the cloud database?'))return;
+  if(!confirm('FINAL WARNING: this cannot be undone. Continue?'))return;
+  for(const table of ['invoices','jobs','expenses','customers']){
+    let {error}=await sb.from(table).delete().not('id','is',null);
+    if(error)return alert(error.message);
+  }
+  toast('All business data cleared ✓');await loadAll();render();
+}
+function exportBackup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='studio-redshine-cloud-backup.json';a.click()}
+boot();
+</script>
+</body>
+</html>
