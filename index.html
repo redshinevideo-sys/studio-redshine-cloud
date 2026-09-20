@@ -12,16 +12,18 @@
 input,select,textarea{width:100%;background:#0c1017;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:11px;outline:none}input:focus,select:focus,textarea:focus{border-color:var(--red)}textarea{min-height:90px}
 .primary{background:var(--red);color:white;border:0;border-radius:9px;padding:11px 15px;font-weight:800}.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px 14px}.danger{background:#551722;color:#ffb4bd;border:1px solid #7c2634;border-radius:9px;padding:10px}
 header{height:72px;background:#0d1016;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:10}.sub{font-size:12px;color:var(--muted)}
-nav{display:flex;gap:7px;padding:10px;background:#0c0f14;border-bottom:1px solid var(--line);overflow:auto;position:sticky;top:72px;z-index:9}nav button{white-space:nowrap;background:transparent;color:var(--muted);border:1px solid transparent;padding:9px 12px;border-radius:9px}nav button.active{background:#291118;color:#fff;border-color:#5b202a}
+nav{display:block;background:transparent;border:0;overflow:visible;position:fixed}nav button{white-space:nowrap;background:transparent;color:var(--muted);border:1px solid transparent;padding:11px 12px;border-radius:10px}
 main{max-width:1250px;margin:auto;padding:18px}.page{display:none}.page.active{display:block}.space{display:flex;justify-content:space-between;align-items:center;gap:10px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:13px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}.kpi{font-size:25px;font-weight:900;margin-top:7px}.muted{color:var(--muted);font-size:13px}
 form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}label{font-size:13px;font-weight:700;color:#d5d8df}.full{grid-column:1/-1}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:10px;border-bottom:1px solid var(--line);font-size:13px;text-align:left}th{color:#cbd0d8;background:#0e1218}.badge{display:inline-block;padding:4px 8px;border-radius:99px;background:#272d38;color:#ddd;font-size:11px}.paid{background:#0d3b2d;color:#7df0bf}.due{background:#49370a;color:#f9d76e}.dangerbadge{background:#4a151c;color:#ff9ca8}.empty{text-align:center;padding:28px;color:var(--muted)}
 .item-field{position:relative}.suggestions{position:absolute;left:0;right:0;top:100%;z-index:60;background:#11151d;border:1px solid var(--line);border-radius:9px;margin-top:4px;overflow:hidden;box-shadow:0 12px 30px #0008}.suggestions button{display:flex;width:100%;justify-content:space-between;gap:10px;text-align:left;border:0;border-bottom:1px solid var(--line);border-radius:0;background:#11151d;color:var(--text);padding:10px 12px}.suggestions button:hover{background:#291118}.item-price-small{color:var(--muted);font-size:12px}.catalog-search{max-width:360px}
 .search{max-width:360px}.hint{color:var(--muted);font-size:12px;line-height:1.5}.status{font-size:12px;color:var(--muted)}
+/* V4 UI */
+body{overflow-x:hidden}.quick-nav{width:220px;position:fixed;left:0;top:72px;bottom:0;background:#0c0f14;border-right:1px solid var(--line);padding:14px 10px;z-index:8;overflow:auto}.quick-nav button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;margin-bottom:6px;padding:11px 12px;border-radius:10px}.quick-nav button .nav-icon{width:24px;text-align:center;font-size:17px}.quick-nav button.active{background:#291118;color:#fff;border-color:#5b202a}.quick-title{font-size:11px;color:var(--muted);padding:3px 10px 9px;text-transform:uppercase;letter-spacing:.08em}.app-main{margin-left:220px;max-width:none}.invoice-due-row{background:rgba(239,35,60,.07)}.invoice-due-row td:first-child{border-left:3px solid var(--red)}.due-strong{color:#ff9ca8;font-weight:900}.paid-strong{color:#7df0bf;font-weight:900}.chart-wrap{margin-top:10px}.chart-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.chart{height:250px;display:flex;align-items:flex-end;gap:7px;padding:15px 8px 5px;border-bottom:1px solid var(--line);overflow-x:auto}.bar-col{min-width:38px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px}.bar-stack{width:100%;height:205px;display:flex;align-items:flex-end;justify-content:center;gap:2px}.bar{width:9px;border-radius:5px 5px 2px 2px;min-height:2px}.bar.income{background:var(--blue)}.bar.expense{background:var(--red)}.bar.net{background:var(--green)}.bar-label{font-size:10px;color:var(--muted);white-space:nowrap}.bar-value{font-size:9px;color:#cbd0d8;white-space:nowrap}.chart-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;font-size:11px;color:var(--muted)}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}.legend-income{background:var(--blue)}.legend-expense{background:var(--red)}.legend-net{background:var(--green)}.inline-customer{display:none;margin-top:10px;padding:12px;background:#0c1017;border:1px solid var(--line);border-radius:10px}.inline-customer.open{display:block}.quick-actions{display:none}@media(max-width:800px){.quick-nav{position:static;width:100%;display:flex;overflow:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px;gap:6px}.quick-title{display:none}.quick-nav button{width:auto;flex:0 0 auto;margin:0}.app-main{margin-left:0}.quick-nav button .nav-label{display:none}}
 .modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:15px;z-index:30}.modal.open{display:flex}.modalbox{width:min(760px,100%);max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
 #toast{position:fixed;right:18px;bottom:18px;background:#151a22;border:1px solid var(--line);padding:12px 15px;border-radius:10px;display:none;z-index:40}
 .invoice{font-family:Arial,sans-serif;background:#fff;color:#111;padding:28px;max-width:850px;margin:auto}.invoice .top{display:flex;justify-content:space-between;border-bottom:3px solid #e31b23;padding-bottom:15px}.invoice h1{color:#e31b23;margin:0}.invoice table{color:#111}.invoice th{background:#eee;color:#111}.invoice td{border-bottom:1px solid #ddd}.total{text-align:right;font-size:21px;font-weight:900}
-#printArea{display:none}@media(max-width:650px){form{grid-template-columns:1fr}.full{grid-column:auto}header{position:static}nav{top:0}.space{align-items:flex-start;flex-direction:column}}
+#printArea{display:none}@media(max-width:650px){form{grid-template-columns:1fr}.full{grid-column:auto}header{position:static}.space{align-items:flex-start;flex-direction:column}.quick-nav{position:static}.quick-nav button{padding:9px 10px}.quick-nav button .nav-label{display:none}.app-main{margin-left:0}}
 @media print{body>*{display:none!important}#printArea{display:block!important}.invoice{display:block!important}}
 </style>
 </head>
@@ -39,14 +41,14 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:10px;bor
 
 <div id="app" style="display:none">
 <header><div><div class="brand">Studio <b>Redshine</b></div><div class="sub">Photo • Video • Printing • Frames — Cloud Manager</div></div><div class="row"><span id="userLabel" class="status"></span><button class="secondary" onclick="logout()">Logout</button></div></header>
-<nav id="nav"></nav>
-<main>
-<section id="dashboard" class="page active"><div class="space"><h2>Dashboard</h2><button class="primary" onclick="openInvoice()">+ New Invoice</button></div><div class="grid" id="kpis" style="margin-top:12px"></div><div class="card" style="margin-top:14px"><div class="space"><h3>Recent Invoices</h3><button class="secondary" onclick="go('invoices')">View all</button></div><div id="recent"></div></div></section>
+<nav id="nav" class="quick-nav"><div class="quick-title">Quick Menu</div></nav>
+<main class="app-main">
+<section id="dashboard" class="page active"><div class="space"><h2>Dashboard</h2><div class="row"><button class="primary" onclick="openInvoice()">🧾 New Invoice</button><button class="secondary" onclick="openCustomer()">👤 New Customer</button><button class="secondary" onclick="openItemModal()">📦 New Item</button><button class="secondary" onclick="openJob()">💼 New Job</button></div></div><div class="grid" id="kpis" style="margin-top:12px"></div><div class="card" style="margin-top:14px"><div class="space"><h3>Recent Invoices</h3><button class="secondary" onclick="go('invoices')">View all</button></div><div id="recent"></div></div></section>
 <section id="customers" class="page"><div class="space"><h2>Customers</h2><div class="row"><input class="search" id="customerSearch" oninput="renderCustomers()" placeholder="Search name / phone..."><button class="primary" onclick="openCustomer()">+ Customer</button></div></div><div class="card" style="margin-top:14px"><div id="customerTable"></div></div></section>
 <section id="jobs" class="page"><div class="space"><h2>Jobs / Orders</h2><button class="primary" onclick="openJob()">+ Job</button></div><div class="card"><div id="jobTable"></div></div></section>
 <section id="invoices" class="page"><div class="space"><h2>Invoices & Bills</h2><button class="primary" onclick="openInvoice()">+ Invoice</button></div><div class="card"><div id="invoiceTable"></div></div></section>
 <section id="expenses" class="page"><div class="space"><h2>Expenses / Costs</h2><button class="primary" onclick="openExpense()">+ Expense</button></div><div class="card"><div id="expenseTable"></div></div></section>
-<section id="reports" class="page"><div class="space"><h2>Monthly Income / Expense Report</h2><input id="reportMonth" type="month" onchange="renderReports()" style="max-width:180px"></div><div class="grid" id="reportKpis" style="margin-top:12px"></div><div class="card" style="margin-top:14px"><div id="reportBody"></div></div></section>
+<section id="reports" class="page"><div class="space"><h2>Income / Expense Reports</h2><div class="row"><select id="reportPeriod" onchange="renderReports()" style="max-width:150px"><option value="daily">Daily</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select><input id="reportMonth" type="month" onchange="renderReports()" style="max-width:180px"></div></div><div class="grid" id="reportKpis" style="margin-top:12px"></div><div class="card chart-wrap"><div id="reportChart"></div></div><div class="card" style="margin-top:14px"><div id="reportBody"></div></div></section>
 <section id="reminders" class="page"><div class="space"><h2>WhatsApp Reminders</h2><span class="status">Outstanding invoices</span></div><div class="card"><div id="reminderTable"></div></div></section>
 <section id="items" class="page"><div class="space"><h2>Items</h2><div class="row"><input class="catalog-search" id="itemSearch" oninput="renderItems()" placeholder="Search items..."><button class="primary" onclick="openItemModal()">+ Item</button></div></div><div class="card" style="margin-top:14px"><div class="hint" style="margin-bottom:10px">Save your common items here. When creating an invoice, type the item name and matching items will appear automatically.</div><div id="itemTable"></div></div></section>
 <section id="settings" class="page"><h2>Settings</h2><div class="card"><form onsubmit="saveSettings(event)"><div><label>Business name</label><input name="name" id="bizName"></div><div><label>Phone</label><input name="phone" id="bizPhone"></div><div><label>Address</label><input name="address" id="bizAddress"></div><div><label>Currency</label><input name="currency" id="currency"></div><div class="full"><label>Business Logo</label><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewLogo(event)"><div id="logoPreview" class="hint" style="margin-top:8px"></div></div><div class="full"><button class="primary">Save Settings</button></div></form><hr><p class="hint">Business settings are shared across the system. Only an Administrator can change them.</p><button class="secondary" onclick="exportBackup()">Export Backup JSON</button><span id="syncStatus" class="status" style="margin-left:10px"></span></div></section>
@@ -65,10 +67,10 @@ let data={customers:[],jobs:[],invoices:[],expenses:[],settings:null};
 function localCatalog(){try{return JSON.parse(localStorage.getItem('redshine_item_catalog')||'[]')}catch(e){return []}}
 function catalog(){return Array.isArray(data.settings?.item_catalog)?data.settings.item_catalog:localCatalog()}
 
-const baseNav=[['dashboard','Dashboard'],['customers','Customers'],['jobs','Jobs / Orders'],['invoices','Invoices'],['expenses','Expenses'],['reports','Reports'],['reminders','Reminders'],['items','Items']];
+const baseNav=[['dashboard','Dashboard','🏠'],['customers','Customers','👤'],['jobs','Jobs / Orders','💼'],['invoices','Invoices','🧾'],['expenses','Expenses','💸'],['reports','Reports','📊'],['reminders','Reminders','🔔'],['items','Items','📦']];
 function renderNav(){
-  const items=isAdmin?[...baseNav,['settings','Settings'],['admin','Administrator']]:baseNav;
-  nav.innerHTML=items.map(x=>`<button id="n_${x[0]}" onclick="go('${x[0]}')">${x[1]}</button>`).join('');
+  const items=isAdmin?[...baseNav,['settings','Settings','⚙️'],['admin','Administrator','🛡️']]:baseNav;
+  nav.innerHTML='<div class="quick-title">Quick Menu</div>'+items.map(x=>`<button id="n_${x[0]}" onclick="go('${x[0]}')"><span class="nav-icon">${x[2]}</span><span class="nav-label">${x[1]}</span></button>`).join('');
 }
 function configured(){return SUPABASE_URL.startsWith('http')&&SUPABASE_ANON_KEY.length>20}
 function money(n){return `${data.settings?.currency||'LKR'} ${Number(n||0).toLocaleString('en-LK',{minimumFractionDigits:2,maximumFractionDigits:2})}`}
@@ -109,7 +111,7 @@ async function loadAll(){
   syncStatus.textContent='Cloud synced ✓';
   if(isAdmin) renderAdmin();
 }
-function customerName(id){return data.customers.find(x=>x.id===id)?.name||'Unknown'}function customer(id){return data.customers.find(x=>x.id===id)||{}}
+function customerName(id){return data.customers.find(x=>x.id===id)?.name||'Walk-in / No customer'}function customer(id){return data.customers.find(x=>x.id===id)||{name:'Walk-in / No customer',phone:'',email:'',address:''}}
 function openModal(t,b){modalTitle.textContent=t;modalBody.innerHTML=b;modal.classList.add('open')}function closeModal(){modal.classList.remove('open')}
 function openCustomer(c=null){openModal(c?'Edit Customer':'New Customer',`<form onsubmit="saveCustomer(event,'${c?.id||''}')"><div><label>Name</label><input name="name" required value="${esc(c?.name)}"></div>${isAdmin?`<div><label>Phone / WhatsApp</label><input name="phone" value="${esc(c?.phone)}"></div>`:''}<div><label>Email</label><input name="email" value="${esc(c?.email)}"></div><div><label>Address</label><input name="address" value="${esc(c?.address)}"></div><div class="full"><button class="primary">Save</button></div></form>`)}
 async function saveCustomer(e,id){e.preventDefault();let o=Object.fromEntries(new FormData(e.target));let q=id?sb.from('customers').update(o).eq('id',id):sb.from('customers').insert(o);let {error}=await q;if(error)return alert(error.message);closeModal();await loadAll()}
@@ -180,12 +182,95 @@ function renderItems(){
   itemTable.innerHTML=rows.length?`<table><tr><th>Item</th><th>Unit Price</th><th>Actions</th></tr>${rows.map(x=>`<tr><td>${esc(x.name)}</td><td>${money(x.price)}</td><td>${isAdmin?`<button type="button" class="secondary" onclick="editItemByIndex(${x._idx})">Edit</button> <button type="button" class="danger" onclick="deleteItemByIndex(${x._idx})">Delete</button>`:'<span class="status">Read only</span>'}</td></tr>`).join('')}</table>`:'<div class="empty">No saved items yet.</div>'
 }
 function nextInvoiceNo(){const y=new Date().getFullYear();const nums=data.invoices.map(i=>String(i.invoice_no||'').match(/^INV-(\d{4})-(\d+)$/)).filter(Boolean).filter(m=>+m[1]===y).map(m=>+m[2]);const n=(nums.length?Math.max(...nums):0)+1;return `INV-${y}-${String(n).padStart(4,'0')}`}
-function openInvoice(inv=null){let opts=data.customers.map(c=>`<option value="${c.id}" ${inv?.customer_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('');let items=Array.isArray(inv?.items)&&inv.items.length?inv.items:[{name:'',qty:1,price:0}];let invNo=inv?.invoice_no||nextInvoiceNo();openModal(inv?'Edit Invoice':'New Invoice',`<form id="invoiceForm" onsubmit="saveInvoice(event,'${inv?.id||''}')"><div><label>Invoice No.</label><input name="invoice_no" value="${esc(invNo)}" readonly></div><div><label>Customer</label><select name="customer_id" required>${opts}</select></div><div><label>Due date</label><input type="date" name="due_date" value="${inv?.due_date||''}"></div><div><label>Payment method</label><select name="payment_method"><option ${inv?.payment_method==='Cash'?'selected':''}>Cash</option><option ${inv?.payment_method==='Bank Transfer'?'selected':''}>Bank Transfer</option><option ${inv?.payment_method==='Card'?'selected':''}>Card</option><option ${inv?.payment_method==='Online'?'selected':''}>Online</option><option ${inv?.payment_method==='Other'?'selected':''}>Other</option></select></div><div id="invoiceItems" class="full"><div class="space"><label>Invoice Items</label><button type="button" class="secondary" onclick="addInvoiceItem()">+ Add Item</button></div><div id="invoiceItemRows" style="margin-top:8px">${items.map(invoiceItemRow).join('')}</div><div class="hint" style="margin-top:7px">Description + quantity + unit price. Totals update instantly.</div></div><div><label>Discount</label><input id="invoiceDiscount" type="number" min="0" step="0.01" name="discount" value="${Number(inv?.discount)||0}" oninput="updateInvoiceTotals()"></div><div><label>Paid / Advance</label><input id="invoicePaid" type="number" min="0" step="0.01" name="paid" value="${Number(inv?.paid)||0}" oninput="updateInvoiceTotals()"></div><div class="full"><label>Notes</label><textarea name="notes" placeholder="Thank you / payment note / delivery note">${esc(inv?.notes)}</textarea></div><div class="full card" style="padding:12px;margin-top:2px"><div class="space"><span>Subtotal</span><b id="invoiceSubtotal">${money(items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0))}</b></div><div class="space"><span>Discount</span><b id="invoiceDiscountView">${money(Number(inv?.discount)||0)}</b></div><div class="space"><span>Total</span><b id="invoiceTotal">${money(Math.max(0,items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0)-(Number(inv?.discount)||0)))}</b></div><div class="space"><span>Balance</span><b id="invoiceBalance">${money(Math.max(0,items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0)-(Number(inv?.discount)||0)-(Number(inv?.paid)||0)))}</b></div></div><div class="full"><button class="primary">Save Invoice</button></div></form>`);updateInvoiceTotals()}
+function refreshInvoiceCustomerSelect(selectedId=''){
+  const sel=document.querySelector('#invoiceForm select[name="customer_id"]');
+  if(!sel)return;
+  sel.innerHTML='<option value="">— No customer / Walk-in —</option>'+data.customers.map(c=>`<option value="${c.id}">${esc(c.name)}${c.phone?' — '+esc(c.phone):''}</option>`).join('');
+  sel.value=selectedId||'';
+}
+function toggleInlineCustomer(){document.getElementById('inlineCustomerBox')?.classList.toggle('open')}
+async function saveInlineCustomer(){
+  const box=document.getElementById('inlineCustomerBox');
+  const o={name:box?.querySelector('[name="name"]')?.value||'',phone:box?.querySelector('[name="phone"]')?.value||'',email:box?.querySelector('[name="email"]')?.value||'',address:box?.querySelector('[name="address"]')?.value||''};
+  o.name=String(o.name||'').trim();
+  if(!o.name)return alert('Customer name is required.');
+  const {data:created,error}=await sb.from('customers').insert(o).select('*').single();
+  if(error)return alert(error.message);
+  data.customers.unshift(created);
+  refreshInvoiceCustomerSelect(created.id);
+  document.getElementById('inlineCustomerBox')?.classList.remove('open');
+  box?.querySelectorAll('input').forEach(x=>x.value='');
+  toast('Customer added to invoice ✓');
+}
+function openInvoice(inv=null){
+  let items=Array.isArray(inv?.items)&&inv.items.length?inv.items:[{name:'',qty:1,price:0}];
+  let invNo=inv?.invoice_no||nextInvoiceNo();
+  openModal(inv?'Edit Invoice':'New Invoice',`<form id="invoiceForm" onsubmit="saveInvoice(event,'${inv?.id||''}')">
+  <div><label>Invoice No.</label><input name="invoice_no" value="${esc(invNo)}" readonly></div>
+  <div><label>Customer <span class="hint">(optional)</span></label><div class="row"><select name="customer_id" style="flex:1"><option value="">— No customer / Walk-in —</option>${data.customers.map(c=>`<option value="${c.id}" ${inv?.customer_id===c.id?'selected':''}>${esc(c.name)}${c.phone?' — '+esc(c.phone):''}</option>`).join('')}</select><button type="button" class="secondary" onclick="toggleInlineCustomer()">+ New Customer</button></div>
+  <div id="inlineCustomerBox" class="inline-customer"><div class="grid"><div><label>Name</label><input name="name" placeholder="Customer name"></div><div><label>Phone / WhatsApp</label><input name="phone" placeholder="07XXXXXXXX"></div><div><label>Email</label><input name="email"></div><div><label>Address</label><input name="address"></div></div><div class="row" style="margin-top:10px"><button type="button" class="primary" onclick="saveInlineCustomer()">Save Customer</button><button type="button" class="secondary" onclick="toggleInlineCustomer()">Cancel</button></div></div></div>
+  <div><label>Due date</label><input type="date" name="due_date" value="${inv?.due_date||''}"></div>
+  <div><label>Payment method</label><select name="payment_method"><option ${inv?.payment_method==='Cash'?'selected':''}>Cash</option><option ${inv?.payment_method==='Bank Transfer'?'selected':''}>Bank Transfer</option><option ${inv?.payment_method==='Card'?'selected':''}>Card</option><option ${inv?.payment_method==='Online'?'selected':''}>Online</option><option ${inv?.payment_method==='Other'?'selected':''}>Other</option></select></div>
+  <div id="invoiceItems" class="full"><div class="space"><label>Invoice Items</label><button type="button" class="secondary" onclick="addInvoiceItem()">+ Add Item</button></div><div id="invoiceItemRows" style="margin-top:8px">${items.map(invoiceItemRow).join('')}</div><div class="hint" style="margin-top:7px">Description + quantity + unit price. Totals update instantly.</div></div>
+  <div><label>Discount</label><input id="invoiceDiscount" type="number" min="0" step="0.01" name="discount" value="${Number(inv?.discount)||0}" oninput="updateInvoiceTotals()"></div>
+  <div><label>Paid / Advance</label><input id="invoicePaid" type="number" min="0" step="0.01" name="paid" value="${Number(inv?.paid)||0}" oninput="updateInvoiceTotals()"></div>
+  <div class="full"><label>Notes</label><textarea name="notes" placeholder="Thank you / payment note / delivery note">${esc(inv?.notes)}</textarea></div>
+  <div class="full card" style="padding:12px;margin-top:2px"><div class="space"><span>Subtotal</span><b id="invoiceSubtotal">${money(items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0))}</b></div><div class="space"><span>Discount</span><b id="invoiceDiscountView">${money(Number(inv?.discount)||0)}</b></div><div class="space"><span>Total</span><b id="invoiceTotal">${money(Math.max(0,items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0)-(Number(inv?.discount)||0)))}</b></div><div class="space"><span>Balance</span><b id="invoiceBalance">${money(Math.max(0,items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0)-(Number(inv?.discount)||0)-(Number(inv?.paid)||0)))}</b></div></div>
+  <div class="full"><button class="primary">Save Invoice</button></div></form>`);
+  updateInvoiceTotals();
+}
 function addInvoiceItem(){const box=document.getElementById('invoiceItemRows');if(!box)return;box.insertAdjacentHTML('beforeend',invoiceItemRow({name:'',qty:1,price:0}));updateInvoiceTotals()}
 function removeInvoiceItem(btn){const rows=document.querySelectorAll('#invoiceItemRows .invoice-item-row');if(rows.length<=1){alert('At least one invoice item is required.');return}btn.closest('.invoice-item-row').remove();updateInvoiceTotals()}
 function readInvoiceItems(){return [...document.querySelectorAll('#invoiceItemRows .invoice-item-row')].map(row=>({name:row.querySelector('.item-name').value.trim(),qty:Math.max(0,Number(row.querySelector('.item-qty').value)||0),price:Math.max(0,Number(row.querySelector('.item-price').value)||0)})).filter(x=>x.name||x.price>0)}
 function updateInvoiceTotals(){const items=readInvoiceItems();const subtotal=items.reduce((s,x)=>s+x.qty*x.price,0);const discount=Math.max(0,Number(document.getElementById('invoiceDiscount')?.value)||0);const paid=Math.max(0,Number(document.getElementById('invoicePaid')?.value)||0);const total=Math.max(0,subtotal-discount);const balance=Math.max(0,total-paid);const a=document.getElementById('invoiceSubtotal'),b=document.getElementById('invoiceDiscountView'),c=document.getElementById('invoiceTotal'),d=document.getElementById('invoiceBalance');if(a)a.textContent=money(subtotal);if(b)b.textContent=money(discount);if(c)c.textContent=money(total);if(d)d.textContent=money(balance)}
-async function saveInvoice(e,id){e.preventDefault();let f=new FormData(e.target),o=Object.fromEntries(f);o.items=readInvoiceItems();if(!o.items.length)return alert('Please add at least one item with a description or price.');o.invoice_no=o.invoice_no||nextInvoiceNo();o.discount=Math.max(0,Number(o.discount)||0);o.paid=Math.max(0,Number(o.paid)||0);o.total=Math.max(0,o.items.reduce((s,x)=>s+x.qty*x.price,0)-o.discount);o.balance=Math.max(0,o.total-o.paid);o.status=o.balance<=0?'Paid':o.paid?'Partial':'Unpaid';let result=id?await sb.from('invoices').update(o).eq('id',id):await sb.from('invoices').insert(o);if(result.error)return alert(result.error.message);closeModal();await loadAll();render();toast('Invoice saved ✓')}
+async function saveInvoice(e,id){
+  e.preventDefault();
+
+  // IMPORTANT:
+  // The invoice form also contains the inline "New Customer" fields.
+  // Do not send those customer-only fields (name/phone/email/address)
+  // to the invoices table. They belong in the customers table.
+  const f=new FormData(e.target);
+
+  const o={
+    invoice_no:f.get('invoice_no') || nextInvoiceNo(),
+    customer_id:f.get('customer_id') || null,
+    due_date:f.get('due_date') || null,
+    payment_method:f.get('payment_method') || 'Cash',
+    items:readInvoiceItems(),
+    discount:Math.max(0,Number(f.get('discount')) || 0),
+    paid:Math.max(0,Number(f.get('paid')) || 0),
+    notes:f.get('notes') || ''
+  };
+
+  if(!o.items.length){
+    return alert('Please add at least one item with a description or price.');
+  }
+
+  const subtotal=o.items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0);
+
+  o.total=Math.max(0,subtotal-o.discount);
+  o.balance=Math.max(0,o.total-o.paid);
+  o.status=o.balance<=0
+    ? 'Paid'
+    : o.paid>0
+      ? 'Partial'
+      : 'Unpaid';
+
+  let result=id
+    ? await sb.from('invoices').update(o).eq('id',id)
+    : await sb.from('invoices').insert(o);
+
+  if(result.error){
+    console.error('Invoice save error:',result.error);
+    return alert(result.error.message);
+  }
+
+  closeModal();
+  await loadAll();
+  render();
+  toast('Invoice saved ✓');
+}
 function openExpense(x=null){openModal(x?'Edit Expense':'New Expense',`<form onsubmit="saveExpense(event,'${x?.id||''}')"><div><label>Date</label><input type="date" name="date" value="${x?.date||new Date().toISOString().slice(0,10)}"></div><div><label>Category</label><select name="category"><option>Equipment</option><option>Printing</option><option>Travel</option><option>Staff</option><option>Other</option></select></div><div class="full"><label>Description</label><input name="description" value="${esc(x?.description)}"></div><div><label>Amount</label><input type="number" step=".01" name="amount" value="${x?.amount||0}" required></div><div class="full"><button class="primary">Save Expense</button></div></form>`)}
 async function saveExpense(e,id){e.preventDefault();let o=Object.fromEntries(new FormData(e.target));o.amount=+o.amount;let q=id?sb.from('expenses').update(o).eq('id',id):sb.from('expenses').insert(o);let {error}=await q;if(error)return alert(error.message);closeModal();await loadAll()}
 function render(){renderDashboard();renderCustomers();renderJobs();renderInvoices();renderExpenses();renderReports();renderReminders();renderItems()}
@@ -199,9 +284,44 @@ function jobWhatsApp(id){
   openModal('WhatsApp Job / Order Message',`<div class="card"><textarea id="jobWaMessage" style="min-height:300px;white-space:pre-wrap">${esc(msg)}</textarea><button type="button" class="primary" style="margin-top:10px" onclick="sendWa('${p}','jobWaMessage')">Send WhatsApp</button></div>`)
 }
 function renderJobs(){jobTable.innerHTML=data.jobs.length?`<table><tr><th>Customer</th><th>Service</th><th>Date</th><th>Total</th><th>Cost</th><th>Status</th><th>Actions</th></tr>${data.jobs.map(j=>`<tr><td>${esc(customerName(j.customer_id))}</td><td>${esc(j.service)}</td><td>${j.date||''}</td><td>${money(j.total)}</td><td>${money(j.cost)}</td><td><span class="badge">${esc(j.status)}</span></td><td><button type="button" class="secondary" onclick="openJob(data.jobs.find(x=>x.id==='${j.id}'))">Edit</button> <button type="button" class="secondary" onclick="jobWhatsApp('${j.id}')">WhatsApp</button>${isAdmin?` <button type="button" class="danger" onclick="deleteRecord('jobs','${j.id}','job')">Delete</button>`:''}</td></tr>`).join('')}</table>`:'<div class="empty">No jobs.</div>'}
-function renderInvoices(){invoiceTable.innerHTML=data.invoices.length?`<table><tr><th>No</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th>Method</th><th>Actions</th></tr>${data.invoices.map(i=>`<tr><td>${i.invoice_no||i.id.slice(0,8)}</td><td>${esc(customerName(i.customer_id))}</td><td>${money(i.total)}</td><td>${money(i.paid)}</td><td>${money(i.balance)}</td><td>${i.due_date||'-'}</td><td>${esc(i.payment_method||'-')}</td><td><button class="secondary" onclick="openInvoice(data.invoices.find(x=>x.id==='${i.id}'))">Edit</button> <button class="secondary" onclick="printInvoice('${i.id}')">PDF</button> <button class="secondary" onclick="waReminder('${i.id}')">WhatsApp</button>${isAdmin?` <button class="danger" onclick="deleteRecord('invoices','${i.id}','invoice')">Delete</button>`:''}</td></tr>`).join('')}</table>`:'<div class="empty">No invoices.</div>'}
+function renderInvoices(){invoiceTable.innerHTML=data.invoices.length?`<table><tr><th>No</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Due</th><th>Method</th><th>Actions</th></tr>${data.invoices.map(i=>{const due=Number(i.balance||0)>0;return `<tr class="${due?'invoice-due-row':''}"><td>${i.invoice_no||i.id.slice(0,8)}</td><td>${esc(customerName(i.customer_id))}</td><td>${money(i.total)}</td><td>${money(i.paid)}</td><td class="${due?'due-strong':'paid-strong'}">${money(i.balance)}</td><td><span class="badge ${due?'dangerbadge':'paid'}">${due?'BALANCE DUE':'PAID'}</span></td><td>${i.due_date||'-'}</td><td>${esc(i.payment_method||'-')}</td><td><button class="secondary" onclick="openInvoice(data.invoices.find(x=>x.id==='${i.id}'))">Edit</button> <button class="secondary" onclick="printInvoice('${i.id}')">PDF</button>${due?' <button class="secondary" onclick="waReminder(\''+i.id+'\')">WhatsApp</button>':''}${isAdmin?` <button class="danger" onclick="deleteRecord('invoices','${i.id}','invoice')">Delete</button>`:''}</td></tr>`}).join('')}</table>`:'<div class="empty">No invoices.</div>'}
 function renderExpenses(){expenseTable.innerHTML=data.expenses.length?`<table><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr>${data.expenses.map(x=>`<tr><td>${x.date}</td><td>${esc(x.category)}</td><td>${esc(x.description)}</td><td>${money(x.amount)}</td><td><button class="secondary" onclick="openExpense(data.expenses.find(v=>v.id==='${x.id}'))">Edit</button>${isAdmin?` <button class="danger" onclick="deleteRecord('expenses','${x.id}','expense')">Delete</button>`:''}</td></tr>`).join('')}</table>`:'<div class="empty">No expenses.</div>'}
-function renderReports(){let m=reportMonth.value||new Date().toISOString().slice(0,7);reportMonth.value=m;let inc=data.invoices.filter(x=>(x.created_at||'').slice(0,7)===m).reduce((s,x)=>s+x.total,0),col=data.invoices.filter(x=>(x.created_at||'').slice(0,7)===m).reduce((s,x)=>s+x.paid,0),ex=data.expenses.filter(x=>x.date?.slice(0,7)===m).reduce((s,x)=>s+x.amount,0),jc=data.jobs.filter(x=>x.date?.slice(0,7)===m).reduce((s,x)=>s+x.cost,0);reportKpis.innerHTML=[['Income',money(inc)],['Collected',money(col)],['Expenses',money(ex+jc)],['Net',money(inc-ex-jc)]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join('');reportBody.innerHTML=`<p><b>Month:</b> ${m}</p><p>Invoice income: <b>${money(inc)}</b></p><p>Cash collected: <b>${money(col)}</b></p><p>Expenses: <b>${money(ex+jc)}</b></p><p>Net result: <b>${money(inc-ex-jc)}</b></p>`}
+function reportMetricsForPeriod(period, key){
+  let inc=0,col=0,ex=0,jc=0;
+  if(period==='daily'){
+    const day=key; inc=data.invoices.filter(x=>(x.created_at||'').slice(0,10)===day).reduce((s,x)=>s+Number(x.total||0),0); col=data.invoices.filter(x=>(x.created_at||'').slice(0,10)===day).reduce((s,x)=>s+Number(x.paid||0),0); ex=data.expenses.filter(x=>x.date===day).reduce((s,x)=>s+Number(x.amount||0),0); jc=data.jobs.filter(x=>x.date===day).reduce((s,x)=>s+Number(x.cost||0),0);
+  }else if(period==='monthly'){
+    inc=data.invoices.filter(x=>(x.created_at||'').slice(0,7)===key).reduce((s,x)=>s+Number(x.total||0),0); col=data.invoices.filter(x=>(x.created_at||'').slice(0,7)===key).reduce((s,x)=>s+Number(x.paid||0),0); ex=data.expenses.filter(x=>x.date?.slice(0,7)===key).reduce((s,x)=>s+Number(x.amount||0),0); jc=data.jobs.filter(x=>x.date?.slice(0,7)===key).reduce((s,x)=>s+Number(x.cost||0),0);
+  }else{
+    inc=data.invoices.filter(x=>(x.created_at||'').slice(0,4)===key).reduce((s,x)=>s+Number(x.total||0),0); col=data.invoices.filter(x=>(x.created_at||'').slice(0,4)===key).reduce((s,x)=>s+Number(x.paid||0),0); ex=data.expenses.filter(x=>x.date?.slice(0,4)===key).reduce((s,x)=>s+Number(x.amount||0),0); jc=data.jobs.filter(x=>x.date?.slice(0,4)===key).reduce((s,x)=>s+Number(x.cost||0),0);
+  }
+  return {inc,col,ex:ex+jc,net:inc-ex-jc};
+}
+function renderReportChart(period, labels, values){
+  const max=Math.max(1,...values.flatMap(v=>[v.inc,v.ex,Math.max(0,v.net)]));
+  const cols=labels.map((label,i)=>{const v=values[i],h=x=>Math.max(2,(Math.max(0,x)/max)*185);return `<div class="bar-col"><div class="bar-value">${money(v.net).replace(/^\\S+ /,'')}</div><div class="bar-stack"><div class="bar income" style="height:${h(v.inc)}px" title="Income ${money(v.inc)}"></div><div class="bar expense" style="height:${h(v.ex)}px" title="Expense ${money(v.ex)}"></div><div class="bar net" style="height:${h(v.net)}px" title="Net ${money(v.net)}"></div></div><div class="bar-label">${label}</div></div>`}).join('');
+  return `<div class="chart-head"><div><b>${period==='daily'?'Daily progress':period==='monthly'?'Monthly progress':'Yearly progress'}</b><div class="hint">Income • Expenses • Net</div></div></div><div class="chart">${cols}</div><div class="chart-legend"><span><i class="legend-dot legend-income"></i>Income</span><span><i class="legend-dot legend-expense"></i>Expenses</span><span><i class="legend-dot legend-net"></i>Net</span></div>`;
+}
+function renderReports(){
+  const period=document.getElementById('reportPeriod')?.value||'monthly';
+  const selectedMonth=document.getElementById('reportMonth')?.value||new Date().toISOString().slice(0,7);
+  reportMonth.value=selectedMonth;
+  const keys=[],labels=[];
+  if(period==='daily'){
+    const [y,m]=selectedMonth.split('-').map(Number),days=new Date(y,m,0).getDate();
+    for(let d=1;d<=days;d++){const key=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;keys.push(key);labels.push(String(d));}
+  }else if(period==='monthly'){
+    const y=selectedMonth.slice(0,4);for(let m=1;m<=12;m++){keys.push(`${y}-${String(m).padStart(2,'0')}`);labels.push(new Date(y,m-1,1).toLocaleString('en',{month:'short'}));}
+  }else{
+    const years=new Set();data.invoices.forEach(x=>{if(x.created_at)years.add(x.created_at.slice(0,4))});data.expenses.forEach(x=>{if(x.date)years.add(x.date.slice(0,4))});data.jobs.forEach(x=>{if(x.date)years.add(x.date.slice(0,4))});const current=new Date().getFullYear();years.add(String(current));[...years].sort().forEach(y=>{keys.push(y);labels.push(y)});
+  }
+  const vals=keys.map(k=>reportMetricsForPeriod(period,k));
+  const currentKey=period==='daily'?new Date().toISOString().slice(0,10):period==='monthly'?selectedMonth:String(new Date().getFullYear());
+  const cur=reportMetricsForPeriod(period,currentKey);
+  reportKpis.innerHTML=[['Income',money(cur.inc)],['Collected',money(cur.col)],['Expenses',money(cur.ex)],['Net',money(cur.net)]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join('');
+  reportChart.innerHTML=renderReportChart(period,labels,vals);
+  reportBody.innerHTML=`<p><b>View:</b> ${period==='daily'?'Daily — '+selectedMonth:period==='monthly'?'Monthly — '+selectedMonth.slice(0,4):'Yearly'}</p><p>Income: <b>${money(cur.inc)}</b></p><p>Cash collected: <b>${money(cur.col)}</b></p><p>Expenses: <b>${money(cur.ex)}</b></p><p>Net result: <b>${money(cur.net)}</b></p>`;
+}
 function renderReminders(){let r=data.invoices.filter(i=>i.balance>0);reminderTable.innerHTML=r.length?`<table><tr><th>Customer</th><th>Invoice</th><th>Balance</th><th>Due</th><th></th></tr>${r.map(i=>`<tr><td>${esc(customerName(i.customer_id))}</td><td>${i.invoice_no||''}</td><td>${money(i.balance)}</td><td>${i.due_date||'-'}</td><td>${esc(i.payment_method||'-')}</td><td><button class="secondary" onclick="waReminder('${i.id}')">Send WhatsApp</button></td></tr>`).join('')}</table>`:'<div class="empty">No outstanding invoices 🎉</div>'}
 function printInvoice(id){let i=data.invoices.find(x=>x.id===id),c=customer(i.customer_id),logo=data.settings.logo_data?`<img src="${data.settings.logo_data}" style="max-height:75px;max-width:190px;object-fit:contain">`:'';printArea.innerHTML=`<div class="invoice"><div class="top"><div>${logo}<h1>${esc(data.settings.name)}</h1><div>${esc(data.settings.address||'')}</div><div>${esc(data.settings.phone||'')}</div></div><div style="text-align:right"><b style="font-size:20px">INVOICE</b><br><b>${esc(i.invoice_no||'')}</b><br>${new Date(i.created_at||Date.now()).toLocaleDateString('en-GB')}<br>${i.due_date?'Due: '+esc(i.due_date):''}</div></div><h3>Bill To</h3><p><b>${esc(c.name)}</b><br>${esc(c.phone||'')}<br>${esc(c.email||'')}<br>${esc(c.address||'')}</p><table><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>${i.items.map(x=>`<tr><td>${esc(x.name)}</td><td>${x.qty}</td><td>${money(x.price)}</td><td>${money(x.qty*x.price)}</td></tr>`).join('')}</table><div style="margin-top:15px;text-align:right"><div>Subtotal: <b>${money(i.items.reduce((s,x)=>s+x.qty*x.price,0))}</b></div><div>Discount: <b>${money(i.discount)}</b></div><div style="font-size:20px;margin-top:6px">Total: <b>${money(i.total)}</b></div><div>Paid / Advance: <b>${money(i.paid)}</b></div><div class="total">Balance: ${money(i.balance)}</div></div><p>Payment method: <b>${esc(i.payment_method||'')}</b></p>${i.notes?`<p><b>Notes:</b> ${esc(i.notes)}</p>`:''}<p style="margin-top:55px;border-top:1px solid #ddd;padding-top:12px">Thank you for choosing ${esc(data.settings.name)}.</p></div>`;window.print()}
 function waReminder(id){
