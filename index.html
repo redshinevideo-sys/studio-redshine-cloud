@@ -401,10 +401,28 @@ function checkInvoiceStock(items,state,editingOld){
   return '';
 }
 async function saveItemFromInvoice(btn){
-  const row=btn.closest('.invoice-item-row');const name=row.querySelector('.item-name').value.trim();const price=Number(row.querySelector('.item-price').value)||0;
+  const row=btn.closest('.invoice-item-row');
+  const name=row.querySelector('.item-name').value.trim();
+  const price=Number(row.querySelector('.item-price').value)||0;
+  const qty=Math.max(1,Math.round(Number(row.querySelector('.item-qty').value)||1));
   if(!name)return alert('Enter an item name first.');
-  const st=catalogState();st.items=[...st.items.filter(x=>String(x.name||'').toLowerCase()!==name.toLowerCase()),{name,cost:0,price,qty:0}];
-  await saveCatalog(st);btn.textContent='Saved ✓';setTimeout(()=>btn.textContent='Save Item',900);
+  const st=catalogState();
+  const existing=st.items.find(x=>String(x.name||'').trim().toLowerCase()===name.toLowerCase());
+  // When an item is created directly from an invoice, initialize its stock
+  // with the invoice quantity. The invoice save will deduct that same quantity,
+  // leaving stock at zero instead of blocking the invoice as "not enough stock".
+  const initialQty=existing ? Math.max(0,Math.round(Number(existing.qty)||0)) : qty;
+  st.items=[...st.items.filter(x=>String(x.name||'').trim().toLowerCase()!==name.toLowerCase()),{name,cost:Number(existing?.cost)||0,price,qty:initialQty,supplier:String(existing?.supplier||'')}];
+  const ok=await saveCatalog(st);
+  if(ok){
+    btn.textContent='Saved ✓';
+    setTimeout(()=>btn.textContent='Save Item',900);
+    // Refresh the row's stock info immediately.
+    const stock=st.items.find(x=>String(x.name||'').trim().toLowerCase()===name.toLowerCase());
+    const info=row.querySelector('.stock-info');
+    if(info)info.innerHTML=stock?`Stock: ${Number(stock.qty)||0}${stock.supplier?' • '+esc(stock.supplier):''}${Number(stock.cost||0)>0?` • Buy: ${money(stock.cost)} • Profit: ${money((Number(stock.price)||0)-(Number(stock.cost)||0))}/unit`:''}`:'Not a saved stock item';
+    row.dataset.cost=Number(stock?.cost)||0;
+  }
 }
 function openItemModal(item=null){
   if(!isAdmin)return alert('Administrator access required to add or edit saved items.');
