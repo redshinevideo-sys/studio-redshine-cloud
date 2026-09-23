@@ -12,7 +12,7 @@
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,"Noto Sans Sinhala",sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
 #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at top right,#3a1118 0,#090b10 42%)}.loginbox{width:min(430px,100%);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:0 20px 70px #0008}.brand{font-size:28px;font-weight:900}.brand b{color:var(--red)}.tag{color:var(--muted);margin:6px 0 24px}.loginbox input{margin:7px 0}
 input,select,textarea{width:100%;background:#0c1017;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:11px;outline:none}input:focus,select:focus,textarea:focus{border-color:var(--red)}textarea{min-height:90px}
-.primary{background:var(--red);color:white;border:0;border-radius:9px;padding:11px 15px;font-weight:800}.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px 14px}.danger{background:#551722;color:#ffb4bd;border:1px solid #7c2634;border-radius:9px;padding:10px}
+.primary{background:var(--red);color:white;border:0;border-radius:9px;padding:11px 15px;font-weight:800}.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px 14px}.receive{background:#123d2d;color:#7df0bf;border:1px solid #1f6a4e;border-radius:9px;padding:10px 12px;font-weight:800}.receive:hover{background:#174b37}.danger{background:#551722;color:#ffb4bd;border:1px solid #7c2634;border-radius:9px;padding:10px}
 header{height:72px;background:#0d1016;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:10}.sub{font-size:12px;color:var(--muted)}
 nav{display:block;background:transparent;border:0;overflow:visible;position:fixed}nav button{white-space:nowrap;background:transparent;color:var(--muted);border:1px solid transparent;padding:11px 12px;border-radius:10px}
 main{max-width:1250px;margin:auto;padding:18px}.page{display:none}.page.active{display:block}.space{display:flex;justify-content:space-between;align-items:center;gap:10px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:13px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}.kpi{font-size:25px;font-weight:900;margin-top:7px}.muted{color:var(--muted);font-size:13px}
@@ -193,16 +193,80 @@ let data={customers:[],jobs:[],invoices:[],expenses:[],settings:null};
 function localCatalog(){try{return JSON.parse(localStorage.getItem('redshine_item_catalog')||'[]')}catch(e){return []}}
 function catalogState(){
   let v=data.settings?.item_catalog;
-  if(Array.isArray(v)) return {items:v,suppliers:[],purchases:[]};
-  if(v&&typeof v==='object') return {items:Array.isArray(v.items)?v.items:[],suppliers:Array.isArray(v.suppliers)?v.suppliers:[],purchases:Array.isArray(v.purchases)?v.purchases:[]};
-  let old=localCatalog(); return {items:Array.isArray(old)?old:[],suppliers:[],purchases:[]};
+  if(Array.isArray(v)) return {items:v,suppliers:[],purchases:[],customer_transactions:[],supplier_transactions:[]};
+  if(v&&typeof v==='object') return {items:Array.isArray(v.items)?v.items:[],suppliers:Array.isArray(v.suppliers)?v.suppliers:[],purchases:Array.isArray(v.purchases)?v.purchases:[],customer_transactions:Array.isArray(v.customer_transactions)?v.customer_transactions:[],supplier_transactions:Array.isArray(v.supplier_transactions)?v.supplier_transactions:[]};
+  let old=localCatalog(); return {items:Array.isArray(old)?old:[],suppliers:[],purchases:[],customer_transactions:[],supplier_transactions:[]};
 }
+function customerTransactions(){return catalogState().customer_transactions||[]}
+function invoicePayments(inv){
+  const raw=String(inv?.notes||'');
+  const m=raw.match(/\[\[PAYMENTS:([\s\S]*?)\]\]/);
+  if(m){try{const a=JSON.parse(m[1]);if(Array.isArray(a))return a.filter(x=>Number(x.amount)>0)}catch(e){}}
+  const paid=Math.max(0,Number(inv?.paid)||0);
+  return paid>0?[{date:invoiceDate(inv),amount:paid,method:inv?.payment_method||'Cash'}]:[];
+}
+function paymentTotal(inv){return invoicePayments(inv).reduce((s,x)=>s+Math.max(0,Number(x.amount)||0),0)}
+function paymentHistoryHtml(inv){
+  const rows=invoicePayments(inv);
+  if(!rows.length)return '<span class="status">No payments</span>';
+  return '<div style="font-size:12px;line-height:1.55">'+rows.map((p,i)=>`<div><b>${esc(p.date||invoiceDate(inv))}</b> — ${money(p.amount)}${p.method?` <span class="muted">(${esc(p.method)})</span>`:''}</div>`).join('')+'</div>';
+}
+function invoiceCreditApplied(inv){
+  const m=String(inv?.notes||'').match(/\[\[CREDIT_APPLIED:([\d.]+)\]\]/);
+  return m?Math.max(0,Number(m[1])||0):0;
+}
+function invoiceBalance(inv){return Number(inv?.total||0)-paymentTotal(inv)-invoiceCreditApplied(inv)}
+function manualCustomerBalance(customerId){
+  if(!customerId)return 0;
+  return customerTransactions().filter(x=>x.customer_id===customerId).reduce((s,x)=>s+(x.type==='give'?1:-1)*Math.max(0,Number(x.amount)||0),0);
+}
+function customerOutstanding(customerId,excludeId=''){
+  if(!customerId)return 0;
+  return data.invoices.filter(x=>x.customer_id===customerId&&x.id!==excludeId).reduce((s,x)=>s+invoiceBalance(x),0)+manualCustomerBalance(customerId);
+}
+function customerBalanceLabel(amount){return amount>0?'Customer balance due':amount<0?'Customer credit':'No customer balance'}
+function customerAccountHistory(customerId){
+  const rows=[];
+  data.invoices.filter(x=>x.customer_id===customerId).forEach(i=>{
+    rows.push({date:invoiceDate(i),kind:'Invoice',ref:i.invoice_no||i.id.slice(0,8),amount:Number(i.total)||0,detail:'Invoice charge'});
+    invoicePayments(i).forEach(p=>rows.push({date:p.date||invoiceDate(i),kind:'Payment',ref:i.invoice_no||i.id.slice(0,8),amount:-Math.max(0,Number(p.amount)||0),detail:p.method||'Payment'}));
+    const cr=invoiceCreditApplied(i); if(cr>0)rows.push({date:invoiceDate(i),kind:'Credit applied',ref:i.invoice_no||i.id.slice(0,8),amount:-cr,detail:'Customer credit applied to invoice'});
+  });
+  customerTransactions().filter(x=>x.customer_id===customerId).forEach(x=>rows.push({date:x.date||todayISO(),kind:x.type==='give'?'Give Money':'Receive Money',ref:'Account',amount:x.type==='give'?Math.max(0,Number(x.amount)||0):-Math.max(0,Number(x.amount)||0),detail:x.notes||''}));
+  return rows.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+}
+function updateInvoicePreviousBalance(customerId){
+  const box=document.getElementById('invoicePreviousBalance');if(!box)return;
+  const amount=customerOutstanding(customerId,document.getElementById('invoiceForm')?.dataset?.invoiceId||'');
+  const subtotal=readInvoiceItems().reduce((s,x)=>s+x.qty*x.price,0); const discount=Math.max(0,Number(document.getElementById('invoiceDiscount')?.value)||0); const total=Math.max(0,subtotal-discount); const credit=Math.min(Math.max(-amount,0),total);
+  box.innerHTML=amount>0?`${customerBalanceLabel(amount)}: <b>${money(amount)}</b>`:amount<0?`${customerBalanceLabel(amount)}: <b>${money(Math.abs(amount))}</b>${credit>0?`<br>Credit applied to this invoice: <b>${money(credit)}</b>`:''}`:'No previous balance / credit';
+}
+function openCustomerTransaction(customerId,type){
+  const c=customer(customerId); if(!c?.id)return;
+  const label=type==='receive'?'Receive Money':'Give Money';
+  openModal(`${label} — ${esc(c.name)}`,`<form onsubmit="saveCustomerTransaction(event,'${customerId}','${type}')"><div class="card" style="margin-bottom:10px"><div class="muted">Current customer balance</div><div class="kpi" id="txnCurrentBalance">${money(customerOutstanding(customerId))}</div><div class="hint">Positive = customer owes you · Negative = customer credit</div></div><div><label>Amount</label><input name="amount" type="number" min="0.01" step="0.01" required></div><div><label>Date</label><input name="date" type="date" value="${todayISO()}" required></div><div class="full"><label>Notes</label><textarea name="notes" placeholder="Payment / advance / adjustment note"></textarea></div><div class="full"><button class="${type==='receive'?'receive':'danger'}">${type==='receive'?'Receive Money':'Give Money'}</button></div></form>`)
+}
+async function saveCustomerTransactions(rows){
+  const st=catalogState(); st.customer_transactions=Array.isArray(rows)?rows:[]; return await saveCatalog(st);
+}
+async function saveCustomerTransaction(e,customerId,type){
+  e.preventDefault(); const f=new FormData(e.target),amount=Math.max(0,Number(f.get('amount'))||0); if(!amount)return alert('Enter an amount.');
+  const rows=[...customerTransactions()];
+  rows.push({id:crypto.randomUUID(),customer_id:customerId,type,amount,date:f.get('date')||todayISO(),notes:String(f.get('notes')||'').trim(),created_at:new Date().toISOString(),by:currentUser?.email||''});
+  if(!await saveCustomerTransactions(rows))return; closeModal();await loadAll();render();toast(type==='receive'?'Money received ✓':'Customer credit / give-money saved ✓');
+}
+function openCustomerHistory(customerId){
+  const c=customer(customerId), rows=customerAccountHistory(customerId), bal=customerOutstanding(customerId);
+  const body=rows.length?`<table><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th><th>Notes</th></tr>${rows.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.kind)}</td><td>${esc(r.ref)}</td><td class="${r.amount<0?'paid-strong':'due-strong'}">${r.amount<0?'- ':''}${money(Math.abs(r.amount))}</td><td>${esc(r.detail||'')}</td></tr>`).join('')}</table>`:'<div class="empty">No account history yet.</div>';
+  openModal(`Customer Account — ${esc(c.name)}`,`<div class="card" style="margin-bottom:12px"><div class="muted">Current balance</div><div class="kpi">${money(bal)}</div><div class="hint">Positive = customer owes you · Negative = customer credit</div></div>${body}`)
+}
+
 function catalog(){return catalogState().items}
 function suppliers(){return catalogState().suppliers}
 function stockOf(name){const x=catalog().find(i=>String(i.name||'').trim().toLowerCase()===String(name||'').trim().toLowerCase());return Number(x?.qty)||0}
 function todayISO(){return new Date().toISOString().slice(0,10)}
 function invoiceDate(inv){const m=String(inv?.notes||'').match(/\[\[invoice_date:(\d{4}-\d{2}-\d{2})\]\]/);return m?m[1]:String(inv?.created_at||'').slice(0,10)||todayISO()}
-function cleanInvoiceNotes(notes){return String(notes||'').replace(/\[\[invoice_date:\d{4}-\d{2}-\d{2}\]\]\s*/,'').trim()}
+function cleanInvoiceNotes(notes){return String(notes||'').replace(/\[\[invoice_date:\d{4}-\d{2}-\d{2}\]\]\s*/,'').replace(/\[\[PAYMENTS:[\s\S]*?\]\]\s*/,'').replace(/\[\[CREDIT_APPLIED:[\d.]+\]\]\s*/,'').trim()}
 function purchaseInfo(exp){const m=String(exp?.description||'').match(/^\[\[PURCHASE:(.*?)\]\]\s*(.*)$/s);if(!m)return null;try{return {...JSON.parse(m[1]),label:m[2]||''}}catch(e){return null}}
 function setPurchaseDescription(info,label){return `[[PURCHASE:${JSON.stringify(info)}]] ${label||'Stock Purchase'}`}
 
@@ -272,6 +336,8 @@ async function saveCatalog(nextState){
   const st=(nextState&&nextState.items)?nextState:catalogState();
   st.items=st.items.filter(x=>x.name).map(x=>({name:String(x.name).trim(),cost:Math.max(0,Number(x.cost)||0),price:Math.max(0,Number(x.price)||0),qty:Math.max(0,Math.round(Number(x.qty)||0)),supplier:String(x.supplier||'').trim()}));
   const seen=new Map();st.items.forEach(x=>seen.set(x.name.toLowerCase(),x));st.items=[...seen.values()];
+  st.customer_transactions=Array.isArray(st.customer_transactions)?st.customer_transactions:[];
+  st.supplier_transactions=Array.isArray(st.supplier_transactions)?st.supplier_transactions:[];
   st.suppliers=(st.suppliers||[]).filter(x=>x.name).map(x=>({id:x.id||crypto.randomUUID(),name:String(x.name).trim(),phone:String(x.phone||''),notes:String(x.notes||'')}));
   const {data:updated,error}=await sb.from('business_settings').upsert({id:1,item_catalog:st},{onConflict:'id'}).select('item_catalog').maybeSingle();
   if(error){console.error(error);alert('Could not save shared data.\n\n'+error.message);return false}
@@ -354,31 +420,62 @@ async function saveInlineCustomer(){
 function openInvoice(inv=null){
   let items=Array.isArray(inv?.items)&&inv.items.length?inv.items:[{name:'',qty:1,price:0}];
   let invNo=inv?.invoice_no||nextInvoiceNo(), d=invoiceDate(inv);
-  openModal(inv?'Edit Invoice':'New Invoice',`<form id="invoiceForm" onsubmit="saveInvoice(event,'${inv?.id||''}')">
+  const previous=inv?.customer_id?customerOutstanding(inv.customer_id,inv.id):0;
+  const initialCredit=inv?invoiceCreditApplied(inv):Math.min(Math.max(-previous,0),Math.max(0,Number(inv?.total||0)));
+  const previousText=previous>0?`${customerBalanceLabel(previous)}: <b>${money(previous)}</b>`:previous<0?`${customerBalanceLabel(previous)}: <b>${money(Math.abs(previous))}</b>`:'No previous balance / credit';
+  const history=inv?invoicePayments(inv):[];
+  openModal(inv?'Edit Invoice':'New Invoice',`<form id="invoiceForm" data-invoice-id="${inv?.id||''}" onsubmit="saveInvoice(event,'${inv?.id||''}')">
   <div><label>Invoice No.</label><input name="invoice_no" value="${esc(invNo)}" readonly></div>
   <div><label>Invoice Date</label><input type="date" name="invoice_date" value="${d}" required></div>
-  <div><label>Customer <span class="hint">(optional)</span></label><div class="row"><select name="customer_id" style="flex:1"><option value="">— No customer / Walk-in —</option>${data.customers.map(c=>`<option value="${c.id}" ${inv?.customer_id===c.id?'selected':''}>${esc(c.name)}${c.phone?' — '+esc(c.phone):''}</option>`).join('')}</select><button type="button" class="secondary" onclick="toggleInlineCustomer()">+ New Customer</button></div>
+  <div><label>Customer <span class="hint">(optional)</span></label><div class="row"><select name="customer_id" style="flex:1" onchange="updateInvoicePreviousBalance(this.value)"><option value="">— No customer / Walk-in —</option>${data.customers.map(c=>`<option value="${c.id}" ${inv?.customer_id===c.id?'selected':''}>${esc(c.name)}${c.phone?' — '+esc(c.phone):''}</option>`).join('')}</select><button type="button" class="secondary" onclick="toggleInlineCustomer()">+ New Customer</button></div>
+  <div id="invoicePreviousBalance" class="hint" style="margin-top:7px;padding:9px 11px;border:1px solid var(--line);border-radius:9px">${previousText}${initialCredit>0?`<br>Credit that can be applied to this invoice: <b>${money(initialCredit)}</b>`:''}</div>
   <div id="inlineCustomerBox" class="inline-customer"><div class="grid"><div><label>Name</label><input name="name" placeholder="Customer name"></div><div><label>Phone / WhatsApp</label><input name="phone" placeholder="07XXXXXXXX"></div><div><label>Email</label><input name="email"></div><div><label>Address</label><input name="address"></div></div><div class="row" style="margin-top:10px"><button type="button" class="primary" onclick="saveInlineCustomer()">Save Customer</button><button type="button" class="secondary" onclick="toggleInlineCustomer()">Cancel</button></div></div></div>
   <div><label>Due date</label><input type="date" name="due_date" value="${inv?.due_date||''}"></div>
   <div><label>Payment method</label><select name="payment_method"><option ${inv?.payment_method==='Cash'?'selected':''}>Cash</option><option ${inv?.payment_method==='Bank Transfer'?'selected':''}>Bank Transfer</option><option ${inv?.payment_method==='Card'?'selected':''}>Card</option><option ${inv?.payment_method==='Online'?'selected':''}>Online</option><option ${inv?.payment_method==='Other'?'selected':''}>Other</option></select></div>
   <div id="invoiceItems" class="full"><div class="space"><label>Invoice Items</label><button type="button" class="secondary" onclick="addInvoiceItem()">+ Add Item</button></div><div id="invoiceItemRows" style="margin-top:8px">${items.map(invoiceItemRow).join('')}</div><div class="hint" style="margin-top:7px">Quantity is whole numbers only. Stock is checked for saved items. Saved items also track buy cost and selling price for profit calculation.</div></div>
   <div><label>Discount</label><input id="invoiceDiscount" type="number" min="0" step="0.01" name="discount" value="${Number(inv?.discount)||0}" oninput="updateInvoiceTotals()"></div>
-  <div><label>Paid / Advance</label><input id="invoicePaid" type="number" min="0" step="0.01" name="paid" value="${Number(inv?.paid)||0}" oninput="updateInvoiceTotals()"></div>
+  <div><label>${inv?'New payment / advance':'First payment / advance'}</label><input id="invoicePaid" type="number" min="0" step="0.01" name="paid" value="0" oninput="updateInvoiceTotals()"><div class="hint" style="margin-top:4px">${inv?'Enter only the new amount received now. Previous payments stay in history.':'Enter the amount received now.'}</div></div>
+  ${inv?`<div class="full card" style="padding:12px"><div class="space"><b>Payment History</b><b>Total Paid: ${money(paymentTotal(inv))}</b></div>${paymentHistoryHtml(inv)}</div>`:''}
   <div class="full"><label>Notes</label><textarea name="notes" placeholder="Thank you / payment note / delivery note">${esc(cleanInvoiceNotes(inv?.notes))}</textarea></div>
-  <div class="full card" style="padding:12px;margin-top:2px"><div class="space"><span>Subtotal</span><b id="invoiceSubtotal">${money(items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0))}</b></div><div class="space"><span>Discount</span><b id="invoiceDiscountView">${money(Number(inv?.discount)||0)}</b></div><div class="space"><span>Total</span><b id="invoiceTotal">${money(Math.max(0,items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0)-(Number(inv?.discount)||0)))}</b></div><div class="space"><span>Balance / Change</span><b id="invoiceBalance">${money(Math.max(0,Number(inv?.total||0)-Number(inv?.paid||0)))}</b></div><div id="overpaidNotice" style="display:none;margin-top:8px;padding:10px;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800">OVERPAID — Change: ${money(0)}</div></div>
+  <div class="full card" style="padding:12px;margin-top:2px"><div class="space"><span>Subtotal</span><b id="invoiceSubtotal">${money(items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0))}</b></div><div class="space"><span>Discount</span><b id="invoiceDiscountView">${money(Number(inv?.discount)||0)}</b></div><div class="space"><span>Total</span><b id="invoiceTotal">${money(Math.max(0,items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0)-(Number(inv?.discount)||0)))}</b></div><div class="space"><span>Credit applied</span><b id="invoiceCreditApplied">${money(initialCredit)}</b></div><div class="space"><span>New payment</span><b id="invoiceNewPayment">${money(0)}</b></div><div class="space"><span>Total paid</span><b id="invoiceTotalPaid">${money(paymentTotal(inv||{}))}</b></div><div class="space"><span>Balance / Change</span><b id="invoiceBalance">${money(Math.abs(Number(inv?.balance)||0))}</b></div><div id="overpaidNotice" style="display:none;margin-top:8px;padding:10px;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800"></div></div>
   <div class="full"><button class="primary">Save Invoice</button></div></form>`); updateInvoiceTotals();
 }
 function addInvoiceItem(){const box=document.getElementById('invoiceItemRows');if(!box)return;box.insertAdjacentHTML('beforeend',invoiceItemRow({name:'',qty:1,price:0}));updateInvoiceTotals()}
 function removeInvoiceItem(btn){const rows=document.querySelectorAll('#invoiceItemRows .invoice-item-row');if(rows.length<=1){alert('At least one invoice item is required.');return}btn.closest('.invoice-item-row').remove();updateInvoiceTotals()}
 function readInvoiceItems(){return [...document.querySelectorAll('#invoiceItemRows .invoice-item-row')].map(row=>({name:row.querySelector('.item-name').value.trim(),cost:Math.max(0,Number(row.dataset.cost)||0),qty:Math.max(1,Math.round(Number(row.querySelector('.item-qty').value)||1)),price:Math.max(0,Number(row.querySelector('.item-price').value)||0)})).filter(x=>x.name||x.price>0)}
-function updateInvoiceTotals(){const items=readInvoiceItems();const subtotal=items.reduce((s,x)=>s+x.qty*x.price,0);const discount=Math.max(0,Number(document.getElementById('invoiceDiscount')?.value)||0);const paid=Math.max(0,Number(document.getElementById('invoicePaid')?.value)||0);const total=Math.max(0,subtotal-discount);const balance=total-paid;const a=document.getElementById('invoiceSubtotal'),b=document.getElementById('invoiceDiscountView'),c=document.getElementById('invoiceTotal'),d=document.getElementById('invoiceBalance'),n=document.getElementById('overpaidNotice');if(a)a.textContent=money(subtotal);if(b)b.textContent=money(discount);if(c)c.textContent=money(total);if(d)d.textContent=money(Math.abs(balance));if(d)d.parentElement.querySelector('span').textContent=balance<0?'Change':'Balance';if(n){n.style.display=balance<0?'block':'none';n.textContent='OVERPAID — Change: '+money(Math.abs(balance))}}
+function updateInvoiceTotals(){
+  const items=readInvoiceItems();
+  const subtotal=items.reduce((s,x)=>s+x.qty*x.price,0);
+  const discount=Math.max(0,Number(document.getElementById('invoiceDiscount')?.value)||0);
+  const newPaid=Math.max(0,Number(document.getElementById('invoicePaid')?.value)||0);
+  const total=Math.max(0,subtotal-discount);
+  const form=document.getElementById('invoiceForm');
+  const id=form?.getAttribute('onsubmit')?.match(/saveInvoice\(event,'([^']*)'/)?.[1]||'';
+  const old=id?data.invoices.find(x=>x.id===id):null;
+  const existingPaid=old?paymentTotal(old):0;
+  const previous=form?.querySelector('[name=customer_id]')?.value?customerOutstanding(form.querySelector('[name=customer_id]').value,id):0;
+  const creditApplied=Math.min(Math.max(-previous,0),total);
+  const totalPaid=existingPaid+newPaid;
+  const balance=total-totalPaid-creditApplied;
+  const a=document.getElementById('invoiceSubtotal'),b=document.getElementById('invoiceDiscountView'),c=document.getElementById('invoiceTotal'),np=document.getElementById('invoiceNewPayment'),tp=document.getElementById('invoiceTotalPaid'),d=document.getElementById('invoiceBalance'),n=document.getElementById('overpaidNotice');
+  if(a)a.textContent=money(subtotal);if(b)b.textContent=money(discount);if(c)c.textContent=money(total);const ca=document.getElementById('invoiceCreditApplied');if(ca)ca.textContent=money(creditApplied);if(np)np.textContent=money(newPaid);if(tp)tp.textContent=money(totalPaid);if(d)d.textContent=money(Math.abs(balance));if(d)d.parentElement.querySelector('span').textContent=balance<0?'Change':'Balance';
+  if(n){n.style.display=balance<0?'block':'none';n.textContent='OVERPAID — Change: '+money(Math.abs(balance))}
+}
 async function saveInvoice(e,id){
-  e.preventDefault(); const f=new FormData(e.target), old=data.invoices.find(x=>x.id===id); const items=readInvoiceItems();
+  e.preventDefault();
+  const f=new FormData(e.target), old=data.invoices.find(x=>x.id===id), items=readInvoiceItems();
   if(!items.length)return alert('Please add at least one item with a description or price.');
-  const st=catalogState(); const stockError=checkInvoiceStock(items,st,old?.items||[]); if(stockError)return alert(stockError);
-  const subtotal=items.reduce((s,x)=>s+x.qty*x.price,0),discount=Math.max(0,Number(f.get('discount'))||0),paid=Math.max(0,Number(f.get('paid'))||0),total=Math.max(0,subtotal-discount),balance=total-paid;
-  let notes=cleanInvoiceNotes(f.get('notes')||''); notes=`[[invoice_date:${f.get('invoice_date')||todayISO()}]]${notes?' '+notes:''}`;
-  const o={invoice_no:f.get('invoice_no')||nextInvoiceNo(),customer_id:f.get('customer_id')||null,due_date:f.get('due_date')||null,payment_method:f.get('payment_method')||'Cash',items,discount,paid,notes,total,balance,status:balance<0?'Overpaid':balance===0?'Paid':paid>0?'Partial':'Unpaid'};
+  const st=catalogState(), stockError=checkInvoiceStock(items,st,old?.items||[]); if(stockError)return alert(stockError);
+  const subtotal=items.reduce((s,x)=>s+x.qty*x.price,0),discount=Math.max(0,Number(f.get('discount'))||0),newPaid=Math.max(0,Number(f.get('paid'))||0),total=Math.max(0,subtotal-discount);
+  const oldPayments=old?invoicePayments(old):[], payments=oldPayments.slice();
+  if(newPaid>0)payments.push({date:todayISO(),amount:newPaid,method:f.get('payment_method')||'Cash'});
+  const paid=payments.reduce((s,x)=>s+Math.max(0,Number(x.amount)||0),0);
+  const previous=String(f.get('customer_id')||'')?customerOutstanding(String(f.get('customer_id')),id):0;
+  const creditApplied=Math.min(Math.max(-previous,0),total);
+  const balance=total-paid-creditApplied;
+  let notes=cleanInvoiceNotes(f.get('notes')||'');
+  notes=`[[invoice_date:${f.get('invoice_date')||todayISO()}]][[PAYMENTS:${JSON.stringify(payments)}]][[CREDIT_APPLIED:${creditApplied.toFixed(2)}]]${notes?' '+notes:''}`;
+  const o={invoice_no:f.get('invoice_no')||nextInvoiceNo(),customer_id:f.get('customer_id')||null,due_date:f.get('due_date')||null,payment_method:f.get('payment_method')||old?.payment_method||'Cash',items,discount,paid,notes,total,balance,status:balance<0?'Overpaid':balance===0?'Paid':paid>0?'Partial':'Unpaid'};
   const result=id?await sb.from('invoices').update(o).eq('id',id):await sb.from('invoices').insert(o); if(result.error)return alert(result.error.message);
   if(old)invoiceStockDelta(old.items||[],1,st); invoiceStockDelta(items,-1,st); await saveCatalog(st);
   closeModal();await loadAll();render();toast(balance<0?'Invoice saved — change due ✓':'Invoice saved ✓');
@@ -392,7 +489,15 @@ async function saveExpense(e,id){e.preventDefault();const f=new FormData(e.targe
 function render(){renderDashboard();renderCustomers();renderJobs();renderInvoices();renderExpenses();renderReports();renderReminders();renderItems();renderSuppliers()}
 function invoiceGrossProfit(inv){const items=Array.isArray(inv?.items)?inv.items:[];const cogs=items.reduce((s,it)=>s+(Number(it.qty)||0)*(Number(it.cost)||0),0);return Number(inv?.total||0)-cogs}
 function renderDashboard(){let sales=data.invoices.reduce((s,x)=>s+x.total,0),paid=data.invoices.reduce((s,x)=>s+x.paid,0),cost=data.expenses.reduce((s,x)=>s+x.amount,0)+data.jobs.reduce((s,x)=>s+x.cost,0),gross=data.invoices.reduce((s,x)=>s+invoiceGrossProfit(x),0);kpis.innerHTML=[['Sales',money(sales)],['Collected',money(paid)],['Outstanding',money(sales-paid)],['Gross Profit',money(gross)],['Result',money(sales-cost)]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join('');let r=data.invoices.slice(0,5);recent.innerHTML=r.length?`<table><tr><th>No</th><th>Customer</th><th>Total</th><th>Status</th><th></th></tr>${r.map(i=>`<tr><td>${i.invoice_no||i.id.slice(0,8)}</td><td>${esc(customerName(i.customer_id))}</td><td>${money(i.total)}</td><td><span class="badge">${i.status}</span></td><td><button class="secondary" onclick="printInvoice('${i.id}')">PDF / Print</button></td></tr>`).join('')}</table>`:'<div class="empty">No invoices yet.</div>'}
-function renderCustomers(){let q=(customerSearch.value||'').toLowerCase();let r=data.customers.filter(c=>(c.name+' '+(isAdmin?(c.phone||'')+' ':'')+(c.email||'')).toLowerCase().includes(q));customerTable.innerHTML=r.length?`<table><tr><th>Name</th>${isAdmin?'<th>Phone</th>':''}<th>Email</th><th>Actions</th></tr>${r.map(c=>`<tr><td>${esc(c.name)}</td>${isAdmin?`<td>${esc(c.phone||'')}</td>`:''}<td>${esc(c.email||'')}</td><td><button class="secondary" onclick="openCustomer(data.customers.find(x=>x.id==='${c.id}'))">Edit</button>${isAdmin?` <button class="danger" onclick="deleteRecord('customers','${c.id}','customer')">Delete</button>`:''}</td></tr>`).join('')}</table>`:'<div class="empty">No customers.</div>'}
+function customerWhatsApp(id){
+  const c=customer(id);if(!c?.id)return;
+  let p=String(c.phone||'').replace(/\D/g,'');if(p.startsWith('0'))p='94'+p.slice(1);if(!p)return alert('Customer phone / WhatsApp number missing');
+  const bal=customerOutstanding(id), rows=customerAccountHistory(id).slice(-8);
+  const status=bal>0?'Balance Due / ඔබ ගෙවිය යුතු මුදල':bal<0?'Credit / Customer Advance':'Paid / Settled';
+  const msg=`${data.settings.name}\n\nDear ${c.name},\n\nCustomer Account Summary / ගිණුම් විස්තර\n\nCurrent Balance: ${money(Math.abs(bal))}\nStatus: ${status}\n\n${bal>0?'Please settle the outstanding balance. / කරුණාකර ඉතිරි මුදල ගෙවන්න.':bal<0?'Customer credit / advance available. / ඔබගේ අත්තිකාරම් මුදල ගිණුමේ ඇත.':'Your account is settled. / ඔබගේ ගිණුම සම්පූර්ණයෙන් පියවා ඇත.'}\n\nThank you for choosing ${data.settings.name}.`;
+  openModal('WhatsApp Customer Message',`<div class=\"card\"><textarea id=\"customerWaMessage\" style=\"min-height:300px;white-space:pre-wrap\">${esc(msg)}</textarea><button type=\"button\" class=\"primary\" style=\"margin-top:10px\" onclick=\"sendWa('${p}','customerWaMessage')\">Send WhatsApp</button></div>`);
+}
+function renderCustomers(){let q=(customerSearch.value||'').toLowerCase();let r=data.customers.filter(c=>(c.name+' '+(isAdmin?(c.phone||'')+' ':'')+(c.email||'')).toLowerCase().includes(q));customerTable.innerHTML=r.length?`<table><tr><th>Name</th>${isAdmin?'<th>Phone</th>':''}<th>Balance</th><th>Email</th><th>Actions</th></tr>${r.map(c=>{const bal=customerOutstanding(c.id);return `<tr><td>${esc(c.name)}</td>${isAdmin?`<td>${esc(c.phone||'')}</td>`:''}<td class="${bal>0?'due-strong':bal<0?'overpaid-strong':'paid-strong'}">${bal>0?'Due: ':bal<0?'Credit: ':''}${money(Math.abs(bal))}</td><td>${esc(c.email||'')}</td><td><button class="receive" onclick="openCustomerTransaction('${c.id}','receive')">Receive Money</button> <button class="danger" onclick="openCustomerTransaction('${c.id}','give')">Give Money</button> <button class="secondary" onclick="openCustomerHistory('${c.id}')">History</button> <button class="secondary" onclick="customerWhatsApp('${c.id}')">WhatsApp</button> <button class="secondary" onclick="openCustomer(data.customers.find(x=>x.id==='${c.id}'))">Edit</button>${isAdmin?` <button class="danger" onclick="deleteRecord('customers','${c.id}','customer')">Delete</button>`:''}</td></tr>`}).join('')}</table>`:'<div class="empty">No customers.</div>'}
 function jobWhatsApp(id){
   const j=data.jobs.find(x=>x.id===id),c=customer(j?.customer_id);if(!j||!c)return;
   let p=String(c.phone||'').replace(/\D/g,'');if(p.startsWith('0'))p='94'+p.slice(1);if(!p)return alert('Customer phone number missing');
@@ -401,12 +506,59 @@ function jobWhatsApp(id){
   openModal('WhatsApp Job / Order Message',`<div class="card"><textarea id="jobWaMessage" style="min-height:300px;white-space:pre-wrap">${esc(msg)}</textarea><button type="button" class="primary" style="margin-top:10px" onclick="sendWa('${p}','jobWaMessage')">Send WhatsApp</button></div>`)
 }
 function renderJobs(){jobTable.innerHTML=data.jobs.length?`<table><tr><th>Customer</th><th>Service</th><th>Date</th><th>Total</th><th>Cost</th><th>Status</th><th>Actions</th></tr>${data.jobs.map(j=>`<tr><td>${esc(customerName(j.customer_id))}</td><td>${esc(j.service)}</td><td>${j.date||''}</td><td>${money(j.total)}</td><td>${money(j.cost)}</td><td><span class="badge">${esc(j.status)}</span></td><td><button type="button" class="secondary" onclick="openJob(data.jobs.find(x=>x.id==='${j.id}'))">Edit</button> <button type="button" class="secondary" onclick="jobWhatsApp('${j.id}')">WhatsApp</button>${isAdmin?` <button type="button" class="danger" onclick="deleteRecord('jobs','${j.id}','job')">Delete</button>`:''}</td></tr>`).join('')}</table>`:'<div class="empty">No jobs.</div>'}
-function renderInvoices(){invoiceTable.innerHTML=data.invoices.length?`<table><tr><th>No</th><th>Date</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance/Change</th><th>Status</th><th>Actions</th></tr>${data.invoices.map(i=>{const bal=Number(i.balance||0),over=bal<0,due=bal>0;return `<tr class="${over?'invoice-overpaid-row':due?'invoice-due-row':''}"><td>${i.invoice_no||i.id.slice(0,8)}</td><td>${invoiceDate(i)}</td><td>${esc(customerName(i.customer_id))}</td><td>${money(i.total)}</td><td>${money(i.paid)}</td><td class="${over?'overpaid-strong':due?'due-strong':'paid-strong'}">${money(Math.abs(bal))}</td><td><span class="badge ${over?'overpaidbadge':due?'dangerbadge':'paid'}">${over?'OVERPAID':due?'BALANCE DUE':'PAID'}</span></td><td><button class="secondary" onclick="openInvoice(data.invoices.find(x=>x.id==='${i.id}'))">Edit</button> <button class="secondary" onclick="printInvoice('${i.id}')">PDF</button>${due?` <button class="secondary" onclick="waReminder('${i.id}')">WhatsApp</button>`:''}${isAdmin?` <button class="danger" onclick="deleteRecord('invoices','${i.id}','invoice')">Delete</button>`:''}</td></tr>`}).join('')}</table>`:'<div class="empty">No invoices.</div>'}
+function renderInvoices(){invoiceTable.innerHTML=data.invoices.length?`<table><tr><th>No</th><th>Date</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance/Change</th><th>Status</th><th>Payment History</th><th>Actions</th></tr>${data.invoices.map(i=>{const paid=paymentTotal(i),bal=invoiceBalance(i),over=bal<0,due=bal>0;return `<tr class="${over?'invoice-overpaid-row':due?'invoice-due-row':''}"><td>${i.invoice_no||i.id.slice(0,8)}</td><td>${invoiceDate(i)}</td><td>${esc(customerName(i.customer_id))}</td><td>${money(i.total)}</td><td class="${paid>0?'paid-strong':''}">${money(paid)}</td><td class="${over?'overpaid-strong':due?'due-strong':'paid-strong'}">${money(Math.abs(bal))}</td><td><span class="badge ${over?'overpaidbadge':due?'dangerbadge':'paid'}">${over?'OVERPAID':due?'BALANCE DUE':'PAID'}</span></td><td>${paymentHistoryHtml(i)}</td><td><button class="secondary" onclick="openInvoice(data.invoices.find(x=>x.id==='${i.id}'))">Edit / Payment</button> <button class="secondary" onclick="printInvoice('${i.id}')">PDF</button> <button class="secondary" onclick="waReminder('${i.id}')">WhatsApp</button>${isAdmin?` <button class="danger" onclick="deleteRecord('invoices','${i.id}','invoice')">Delete</button>`:''}</td></tr>`}).join('')}</table>`:'<div class="empty">No invoices.</div>'}
 function renderExpenses(){expenseTable.innerHTML=data.expenses.length?`<table><tr><th>Date</th><th>Category</th><th>Description</th><th>Supplier</th><th>Amount</th><th>Actions</th></tr>${data.expenses.map(x=>{const p=purchaseInfo(x);return `<tr><td>${x.date}</td><td>${esc(x.category)}</td><td>${esc(p?.label||x.description)}</td><td>${esc(p?.supplier||'-')}</td><td>${money(x.amount)}</td><td><button class="secondary" onclick="openExpense(data.expenses.find(v=>v.id==='${x.id}'))">Edit</button>${isAdmin?` <button class="danger" onclick="deleteExpense('${x.id}')">Delete</button>`:''}</td></tr>`}).join('')}</table>`:'<div class="empty">No expenses.</div>'}
-function renderSuppliers(){const q=(document.getElementById('supplierSearch')?.value||'').toLowerCase();const rows=suppliers().filter(x=>(x.name+' '+x.phone+' '+x.notes).toLowerCase().includes(q));supplierTable.innerHTML=rows.length?`<table><tr><th>Supplier</th><th>Phone</th><th>Notes</th><th>Actions</th></tr>${rows.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.phone||'')}</td><td>${esc(x.notes||'')}</td><td><button class="secondary" onclick='openSupplier(${JSON.stringify(x).replace(/'/g,"&#39;")})'>Edit</button><button class="danger" onclick="deleteSupplier('${x.id}')">Delete</button></td></tr>`).join('')}</table>`:'<div class="empty">No suppliers yet.</div>'}
+function supplierTransactions(){return catalogState().supplier_transactions||[]}
+function supplierPurchases(supplierId){
+  if(!supplierId)return [];
+  return data.expenses.filter(x=>{const p=purchaseInfo(x);return p&&String(p.supplier||'')===String(supplierId) || (p&&String(p.supplier||'')===String(supplierName(supplierId)));});
+}
+function supplierName(id){return suppliers().find(x=>String(x.id)===String(id))?.name||''}
+function supplierOutstanding(supplierId){
+  if(!supplierId)return 0;
+  const name=supplierName(supplierId);
+  let total=data.expenses.reduce((sum,x)=>{const p=purchaseInfo(x);if(!p)return sum;return (String(p.supplier||'')===String(supplierId)||String(p.supplier||'')===name)?sum+Math.max(0,Number(x.amount)||0):sum},0);
+  for(const t of supplierTransactions().filter(x=>String(x.supplier_id)===String(supplierId))) total-=Math.max(0,Number(t.amount)||0);
+  return total;
+}
+function supplierBalanceLabel(amount){const n=Number(amount)||0;return n>0?`Payable: ${money(n)}`:n<0?`Credit: ${money(Math.abs(n))}`:'Settled'}
+function supplierAccountHistory(supplierId){
+  const name=supplierName(supplierId),rows=[];
+  data.expenses.forEach(x=>{const p=purchaseInfo(x);if(!p)return;if(String(p.supplier||'')!==String(supplierId)&&String(p.supplier||'')!==name)return;rows.push({date:x.date||todayISO(),kind:'Purchase',ref:x.id,amount:Math.max(0,Number(x.amount)||0),detail:p.label||'Stock Purchase'});});
+  supplierTransactions().filter(x=>String(x.supplier_id)===String(supplierId)).forEach(x=>rows.push({date:x.date||todayISO(),kind:x.type==='give'?'Give Money':'Receive Money',ref:x.id,amount:-Math.max(0,Number(x.amount)||0),detail:x.notes||''}));
+  return rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+}
+function openSupplierTransaction(supplierId,type){
+  const s=suppliers().find(x=>String(x.id)===String(supplierId));if(!s)return;
+  const label=type==='give'?'Give Money':'Receive Money';
+  openModal(`${label} — ${esc(s.name)}`,`<form onsubmit="saveSupplierTransaction(event,'${supplierId}','${type}')"><div class="card" style="margin-bottom:10px"><div class="muted">Current supplier balance</div><div class="kpi">${money(supplierOutstanding(supplierId))}</div><div class="hint">Positive = you owe supplier · Negative = supplier credit</div></div><div><label>Amount</label><input name="amount" type="number" min="0.01" step="0.01" required></div><div><label>Date</label><input name="date" type="date" value="${todayISO()}" required></div><div class="full"><label>Notes</label><textarea name="notes" placeholder="Payment / refund / adjustment note"></textarea></div><div class="full"><button class="${type==='give'?'danger':'receive'}">${label}</button></div></form>`)
+}
+async function saveSupplierTransaction(e,supplierId,type){
+  e.preventDefault();if(!isAdmin)return alert('Administrator access required.');
+  const f=new FormData(e.target),amount=Math.max(0,Number(f.get('amount'))||0);if(!amount)return alert('Enter an amount.');
+  const st=catalogState(),rows=[...(st.supplier_transactions||[])];
+  rows.push({id:crypto.randomUUID(),supplier_id:supplierId,type,amount,date:f.get('date')||todayISO(),notes:String(f.get('notes')||'').trim(),created_at:new Date().toISOString(),by:currentUser?.email||''});
+  st.supplier_transactions=rows;
+  if(!await saveCatalog(st))return;
+  closeModal();renderSuppliers();toast(type==='give'?'Supplier payment saved ✓':'Supplier refund / receive saved ✓');
+}
+function openSupplierHistory(supplierId){
+  const s=suppliers().find(x=>String(x.id)===String(supplierId));if(!s)return;
+  const rows=supplierAccountHistory(supplierId),bal=supplierOutstanding(supplierId);
+  const body=rows.length?`<table><tr><th>Date</th><th>Type</th><th>Reference</th><th>Amount</th><th>Notes</th></tr>${rows.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.kind)}</td><td>${esc(r.ref)}</td><td class="${r.amount<0?'paid-strong':'due-strong'}">${r.amount<0?'- ':''}${money(Math.abs(r.amount))}</td><td>${esc(r.detail||'')}</td></tr>`).join('')}</table>`:'<div class="empty">No account history yet.</div>';
+  openModal(`Supplier Account — ${esc(s.name)}`,`<div class="card" style="margin-bottom:12px"><div class="muted">Current balance</div><div class="kpi">${money(bal)}</div><div class="hint">Positive = you owe supplier · Negative = supplier credit</div></div>${body}`)
+}
+function renderSuppliers(){const q=(document.getElementById('supplierSearch')?.value||'').toLowerCase();const rows=suppliers().filter(x=>(x.name+' '+x.phone+' '+x.notes).toLowerCase().includes(q));supplierTable.innerHTML=rows.length?`<table><tr><th>Supplier</th><th>Phone</th><th>Balance</th><th>Notes</th><th>Actions</th></tr>${rows.map(x=>{const bal=supplierOutstanding(x.id);return `<tr><td>${esc(x.name)}</td><td>${esc(x.phone||'')}</td><td class="${bal>0?'due-strong':bal<0?'overpaid-strong':'paid-strong'}">${supplierBalanceLabel(bal)}</td><td>${esc(x.notes||'')}</td><td><button class="danger" onclick="openSupplierTransaction('${x.id}','give')">Give Money</button> <button class="receive" onclick="openSupplierTransaction('${x.id}','receive')">Receive Money</button> <button class="secondary" onclick="openSupplierHistory('${x.id}')">History</button> <button class="secondary" onclick="supplierWhatsApp('${x.id}')">WhatsApp</button> <button class="secondary" onclick='openSupplier(${JSON.stringify(x).replace(/'/g,"&#39;")})'>Edit</button><button class="danger" onclick="deleteSupplier('${x.id}')">Delete</button></td></tr>`}).join('')}</table>`:'<div class="empty">No suppliers yet.</div>'}
+function supplierWhatsApp(id){
+  const s=suppliers().find(x=>String(x.id)===String(id));if(!s)return;
+  let p=String(s.phone||'').replace(/\D/g,'');if(p.startsWith('0'))p='94'+p.slice(1);if(!p)return alert('Supplier phone / WhatsApp number missing');
+  const bal=supplierOutstanding(id), status=bal>0?'Amount Payable / ගෙවීමට ඇති මුදල':bal<0?'Credit / Supplier Credit':'Settled / ගිණුම පියවා ඇත';
+  const msg=`${data.settings.name}\n\nDear ${s.name},\n\nSupplier Account Summary / සැපයුම්කරු ගිණුම් විස්තර\n\nCurrent Balance: ${money(Math.abs(bal))}\nStatus: ${status}\n\n${bal>0?'Amount payable to you. / ඔබට ගෙවීමට ඇති මුදලයි.':bal<0?'Credit / advance received is recorded in the account. / ලැබුණු අත්තිකාරම්/ක්‍රෙඩිට් ගිණුමේ සටහන් කර ඇත.':'Your supplier account is settled. / ඔබගේ supplier ගිණුම පියවා ඇත.'}\n\nThank you.\n${data.settings.name}`;
+  openModal('WhatsApp Supplier Message',`<div class=\"card\"><textarea id=\"supplierWaMessage\" style=\"min-height:300px;white-space:pre-wrap\">${esc(msg)}</textarea><button type=\"button\" class=\"primary\" style=\"margin-top:10px\" onclick=\"sendWa('${p}','supplierWaMessage')\">Send WhatsApp</button></div>`);
+}
 function openSupplier(x=null){if(!isAdmin)return alert('Administrator access required.');openModal(x?'Edit Supplier':'New Supplier',`<form id="supplierForm" onsubmit="saveSupplier(event,'${x?.id||''}')"><div><label>Supplier name</label><input name="name" required value="${esc(x?.name)}"></div><div><label>Phone</label><input name="phone" value="${esc(x?.phone)}"></div><div class="full"><label>Notes</label><input name="notes" value="${esc(x?.notes)}"></div>${contactImportControls('supplier')}<div class="full"><button class="primary">Save Supplier</button></div></form>`)}
 async function saveSupplier(e,id){e.preventDefault();const f=new FormData(e.target),st=catalogState(),o={id:id||crypto.randomUUID(),name:String(f.get('name')||'').trim(),phone:String(f.get('phone')||''),notes:String(f.get('notes')||'')};if(!o.name)return;st.suppliers=st.suppliers.filter(x=>x.id!==id&&x.name.toLowerCase()!==o.name.toLowerCase());st.suppliers.push(o);if(await saveCatalog(st)){closeModal();renderSuppliers()}}
-async function deleteSupplier(id){if(!isAdmin)return alert('Administrator access required.');if(!confirm('Delete this supplier?'))return;const st=catalogState();st.suppliers=st.suppliers.filter(x=>x.id!==id);if(await saveCatalog(st))renderSuppliers()}
+async function deleteSupplier(id){if(!isAdmin)return alert('Administrator access required.');if(!confirm('Delete this supplier?'))return;const st=catalogState();st.suppliers=st.suppliers.filter(x=>x.id!==id);st.supplier_transactions=(st.supplier_transactions||[]).filter(x=>String(x.supplier_id)!==String(id));if(await saveCatalog(st))renderSuppliers()}
 async function deleteExpense(id){if(!isAdmin)return alert('Administrator access required.');if(!confirm('Delete this expense?'))return;const x=data.expenses.find(v=>v.id===id),pi=purchaseInfo(x),st=catalogState();if(pi)for(const r of pi.items||[])changeStock(r.name,-Math.max(0,Math.round(Number(r.qty)||0)),st);const {error}=await sb.from('expenses').delete().eq('id',id);if(error)return alert(error.message);if(pi)await saveCatalog(st);await loadAll();render();toast('Expense deleted ✓')}
 function reportMetricsForPeriod(period, key){
   let inc=0,col=0,ex=0,jc=0,gp=0;
@@ -449,7 +601,7 @@ function printInvoice(id){let i=data.invoices.find(x=>x.id===id),c=customer(i.cu
 function waReminder(id){
   const i=data.invoices.find(x=>x.id===id),c=customer(i.customer_id);let p=(c.phone||'').replace(/\D/g,'');if(p.startsWith('0'))p='94'+p.slice(1);if(!p)return alert('Customer phone number missing');
   const lines=(i.items||[]).map(x=>`• ${x.name} × ${x.qty} — ${money(x.qty*x.price)}`).join('\n');
-  const msg=`${data.settings.name}\n\nInvoice: ${i.invoice_no||'-'}\nCustomer: ${c.name}\n\nItems:\n${lines||'• Services / Items'}\n\nTotal Amount: ${money(i.total)}\nAdvance Paid: ${money(i.paid)}\nBalance Due: ${money(i.balance)}${i.due_date?`\nDue Date: ${i.due_date}`:''}\n\nThank you for choosing ${data.settings.name}.`;
+  const msg=`${data.settings.name}\n\nInvoice: ${i.invoice_no||'-'}\nCustomer: ${c.name}\n\nItems:\n${lines||'• Services / Items'}\n\nSubtotal: ${money((i.items||[]).reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0))}${Number(i.discount||0)>0?`\nDiscount: - ${money(i.discount)}`:''}\nTotal Amount: ${money(i.total)}\nTotal Paid: ${money(paymentTotal(i))}\nBalance Due: ${money(Math.max(0,invoiceBalance(i)))}\nPayment Status: ${invoiceBalance(i)>0?'BALANCE DUE':invoiceBalance(i)<0?'CREDIT / CHANGE DUE':'PAID'}${i.due_date?`\nDue Date: ${i.due_date}`:''}\n\nThank you for choosing ${data.settings.name}.`;
   openModal('WhatsApp Message',`<div class="card"><textarea id="waEnglish" style="min-height:280px;white-space:pre-wrap">${esc(msg)}</textarea><button class="primary" style="margin-top:10px" onclick="sendWa('${p}','waEnglish')">Send WhatsApp</button></div>`)
 }
 function sendWa(phone,field){window.open(`https://wa.me/${phone}?text=${encodeURIComponent(document.getElementById(field).value)}`,'_blank')}
