@@ -218,7 +218,51 @@ function invoiceCreditApplied(inv){
 function invoiceBalance(inv){return Number(inv?.total||0)-paymentTotal(inv)-invoiceCreditApplied(inv)}
 function manualCustomerBalance(customerId){
   if(!customerId)return 0;
-  return customerTransactions().filter(x=>x.customer_id===customerId).reduce((s,x)=>s+(x.type==='give'?1:-1)*Math.max(0,Number(x.amount)||0),0);
+  return customerTransactions().filter(x=>x.customer_id===customerId).reduce((s,x)=>{
+    const amt=Math.max(0,Number(x.amount)||0);
+    if(x.type==='give')return s+amt;
+    const applied=Math.min(amt,Math.max(0,Number(x.applied)||0));
+    return s-(amt-applied);
+  },0);
+}
+async function applyCustomerReceiveToInvoices(customerId,amount,date){
+  let remaining=Math.max(0,Number(amount)||0), appliedTotal=0;
+  if(!customerId||!remaining)return 0;
+  const invoices=data.invoices.filter(x=>String(x.customer_id)===String(customerId)).sort((a,b)=>String(invoiceDate(a)).localeCompare(String(invoiceDate(b)))||String(a.created_at||'').localeCompare(String(b.created_at||'')));
+  for(const inv of invoices){
+    if(remaining<=0)break;
+    const bal=Math.max(0,invoiceBalance(inv));
+    if(!bal)continue;
+    const pay=Math.min(remaining,bal);
+    const payments=invoicePayments(inv);
+    payments.push({date:date||todayISO(),amount:pay,method:'Customer Account'});
+    const paid=payments.reduce((sum,x)=>sum+Math.max(0,Number(x.amount)||0),0);
+    const newBal=Math.max(0,Number(inv.total||0)-paid-invoiceCreditApplied(inv));
+    let notes=cleanInvoiceNotes(inv.notes||'');
+    notes=`[[invoice_date:${invoiceDate(inv)}]][[PAYMENTS:${JSON.stringify(payments)}]][[CREDIT_APPLIED:${invoiceCreditApplied(inv).toFixed(2)}]]${notes?' '+notes:''}`;
+    const status=newBal<0?'Overpaid':newBal===0?'Paid':paid>0?'Partial':'Unpaid';
+    const result=await sb.from('invoices').update({paid,balance:newBal,notes,status,payment_method:inv.payment_method||'Cash'}).eq('id',inv.id);
+    if(result.error)throw new Error(result.error.message);
+    inv.paid=paid;inv.balance=newBal;inv.notes=notes;inv.status=status;
+    remaining-=pay;appliedTotal+=pay;
+  }
+  return appliedTotal;
+}
+async function reconcileCustomerReceiveTransactions(){
+  const rows=[...customerTransactions()];
+  let changed=false;
+  for(const row of rows){
+    if(row.type!=='receive')continue;
+    const amt=Math.max(0,Number(row.amount)||0);
+    const already=Math.min(amt,Math.max(0,Number(row.applied)||0));
+    const remaining=amt-already;
+    if(remaining<=0)continue;
+    try{
+      const applied=await applyCustomerReceiveToInvoices(row.customer_id,remaining,row.date||todayISO());
+      if(applied>0){row.applied=already+applied;changed=true;}
+    }catch(err){console.error('Customer payment reconciliation failed',err);toast('Customer payment sync failed: '+err.message);}
+  }
+  if(changed){const st=catalogState();st.customer_transactions=rows;await saveCatalog(st);}
 }
 function customerOutstanding(customerId,excludeId=''){
   if(!customerId)return 0;
@@ -251,9 +295,13 @@ async function saveCustomerTransactions(rows){
 }
 async function saveCustomerTransaction(e,customerId,type){
   e.preventDefault(); const f=new FormData(e.target),amount=Math.max(0,Number(f.get('amount'))||0); if(!amount)return alert('Enter an amount.');
-  const rows=[...customerTransactions()];
-  rows.push({id:crypto.randomUUID(),customer_id:customerId,type,amount,date:f.get('date')||todayISO(),notes:String(f.get('notes')||'').trim(),created_at:new Date().toISOString(),by:currentUser?.email||''});
-  if(!await saveCustomerTransactions(rows))return; closeModal();await loadAll();render();toast(type==='receive'?'Money received ✓':'Customer credit / give-money saved ✓');
+  const date=f.get('date')||todayISO(),rows=[...customerTransactions()];
+  const row={id:crypto.randomUUID(),customer_id:customerId,type,amount,applied:0,date,notes:String(f.get('notes')||'').trim(),created_at:new Date().toISOString(),by:currentUser?.email||''};
+  if(type==='receive'){
+    try{row.applied=await applyCustomerReceiveToInvoices(customerId,amount,date);}catch(err){return alert('Could not apply payment to invoice: '+err.message)}
+  }
+  rows.push(row);
+  if(!await saveCustomerTransactions(rows))return; closeModal();await loadAll();render();toast(type==='receive'?(row.applied>0?'Money received and invoice balance updated ✓':'Money received and saved as customer credit ✓'):'Customer give-money saved ✓');
 }
 function openCustomerHistory(customerId){
   const c=customer(customerId), rows=customerAccountHistory(customerId), bal=customerOutstanding(customerId);
@@ -311,6 +359,7 @@ async function loadAll(){
   ]);
   for(const x of [c,j,i,e,s])if(x.error){console.error(x.error);toast(x.error.message)}
   data={customers:c.data||[],jobs:j.data||[],invoices:i.data||[],expenses:e.data||[],settings:s.data||{name:'Studio Redshine',phone:'074 3 17 17 18',address:'',currency:'LKR',logo_data:'',item_catalog:localCatalog()}};
+  await reconcileCustomerReceiveTransactions();
   bizName.value=data.settings.name||'Studio Redshine';bizPhone.value=data.settings.phone||'';bizAddress.value=data.settings.address||'';currency.value=data.settings.currency||'LKR';logoPreview.innerHTML=data.settings.logo_data?`<img src="${data.settings.logo_data}" style="max-height:70px;max-width:180px;border-radius:8px;border:1px solid var(--line)"><br><span>Current logo</span>`:'No logo uploaded';
   syncStatus.textContent='Cloud synced ✓';
   if(isAdmin) renderAdmin();
