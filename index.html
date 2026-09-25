@@ -218,7 +218,7 @@ function invoiceCreditApplied(inv){
 function invoiceBalance(inv){return Number(inv?.total||0)-paymentTotal(inv)-invoiceCreditApplied(inv)}
 function manualCustomerBalance(customerId){
   if(!customerId)return 0;
-  return customerTransactions().filter(x=>x.customer_id===customerId).reduce((s,x)=>{
+  return customerTransactions().filter(x=>customerGroupIds(customerId).includes(String(x.customer_id))).reduce((s,x)=>{
     const amt=Math.max(0,Number(x.amount)||0);
     if(x.type==='give')return s+amt;
     const applied=Math.min(amt,Math.max(0,Number(x.applied)||0));
@@ -228,7 +228,7 @@ function manualCustomerBalance(customerId){
 async function applyCustomerReceiveToInvoices(customerId,amount,date){
   let remaining=Math.max(0,Number(amount)||0), appliedTotal=0;
   if(!customerId||!remaining)return 0;
-  const invoices=data.invoices.filter(x=>String(x.customer_id)===String(customerId)).sort((a,b)=>String(invoiceDate(a)).localeCompare(String(invoiceDate(b)))||String(a.created_at||'').localeCompare(String(b.created_at||'')));
+  const groupIds=customerGroupIds(customerId); const invoices=data.invoices.filter(x=>groupIds.includes(String(x.customer_id))).sort((a,b)=>String(invoiceDate(a)).localeCompare(String(invoiceDate(b)))||String(a.created_at||'').localeCompare(String(b.created_at||'')));
   for(const inv of invoices){
     if(remaining<=0)break;
     const bal=Math.max(0,invoiceBalance(inv));
@@ -266,12 +266,12 @@ async function reconcileCustomerReceiveTransactions(){
 }
 function customerOutstanding(customerId,excludeId=''){
   if(!customerId)return 0;
-  return data.invoices.filter(x=>x.customer_id===customerId&&x.id!==excludeId).reduce((s,x)=>s+invoiceBalance(x),0)+manualCustomerBalance(customerId);
+  const ids=customerGroupIds(customerId); return data.invoices.filter(x=>ids.includes(String(x.customer_id))&&x.id!==excludeId).reduce((s,x)=>s+invoiceBalance(x),0)+manualCustomerBalance(customerId);
 }
 function customerBalanceLabel(amount){return amount>0?'Customer balance due':amount<0?'Customer credit':'No customer balance'}
 function customerAccountHistory(customerId){
   const rows=[];
-  data.invoices.filter(x=>x.customer_id===customerId).forEach(i=>{
+  data.invoices.filter(x=>customerGroupIds(customerId).includes(String(x.customer_id))).forEach(i=>{
     rows.push({date:invoiceDate(i),kind:'Invoice',ref:i.invoice_no||i.id.slice(0,8),amount:Number(i.total)||0,detail:'Invoice charge'});
     invoicePayments(i).forEach(p=>rows.push({date:p.date||invoiceDate(i),kind:'Payment',ref:i.invoice_no||i.id.slice(0,8),amount:-Math.max(0,Number(p.amount)||0),detail:p.method||'Payment'}));
     const cr=invoiceCreditApplied(i); if(cr>0)rows.push({date:invoiceDate(i),kind:'Credit applied',ref:i.invoice_no||i.id.slice(0,8),amount:-cr,detail:'Customer credit applied to invoice'});
@@ -281,9 +281,33 @@ function customerAccountHistory(customerId){
 }
 function updateInvoicePreviousBalance(customerId){
   const box=document.getElementById('invoicePreviousBalance');if(!box)return;
-  const amount=customerOutstanding(customerId,document.getElementById('invoiceForm')?.dataset?.invoiceId||'');
-  const subtotal=readInvoiceItems().reduce((s,x)=>s+x.qty*x.price,0); const discount=Math.max(0,Number(document.getElementById('invoiceDiscount')?.value)||0); const total=Math.max(0,subtotal-discount); const credit=Math.min(Math.max(-amount,0),total);
-  box.innerHTML=amount>0?`${customerBalanceLabel(amount)}: <b>${money(amount)}</b>`:amount<0?`${customerBalanceLabel(amount)}: <b>${money(Math.abs(amount))}</b>${credit>0?`<br>Credit applied to this invoice: <b>${money(credit)}</b>`:''}`:'No previous balance / credit';
+  const form=document.getElementById('invoiceForm');
+  if(!customerId){
+    box.className='hint';
+    box.style.cssText='margin-top:9px;padding:11px 13px;border:1px dashed var(--line);border-radius:10px';
+    box.innerHTML='Select a customer to see previous account balance / credit.';
+    return;
+  }
+  const amount=customerOutstanding(customerId,form?.dataset?.invoiceId||'');
+  const subtotal=readInvoiceItems().reduce((s,x)=>s+x.qty*x.price,0);
+  const discount=Math.max(0,Number(document.getElementById('invoiceDiscount')?.value)||0);
+  const total=Math.max(0,subtotal-discount);
+  const credit=Math.min(Math.max(-amount,0),total);
+  box.className='hint';
+  box.style.cssText='margin-top:9px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);';
+  if(amount>0){
+    box.innerHTML=`<div style="font-weight:800;margin-bottom:3px">Previous Customer Balance / පරණ ශේෂය</div>
+      <div style="font-size:17px;font-weight:900;color:#ffd43b">Customer owes you: ${money(amount)}</div>
+      <div style="margin-top:3px;opacity:.82">This is the customer's previous outstanding balance. / පරණ ගෙවිය යුතු මුදල.</div>`;
+  }else if(amount<0){
+    box.innerHTML=`<div style="font-weight:800;margin-bottom:3px">Previous Customer Credit / පරණ අත්තිකාරම්</div>
+      <div style="font-size:17px;font-weight:900;color:#4ade80">Customer credit: ${money(Math.abs(amount))}</div>
+      ${credit>0?`<div style="margin-top:4px;color:#4ade80">Credit applied to this invoice: ${money(credit)}</div>`:''}
+      <div style="margin-top:3px;opacity:.82">This credit can be used against this invoice. / පරණ අත්තිකාරම් මුදල මේ invoice එකට අඩු කළ හැක.</div>`;
+  }else{
+    box.innerHTML=`<div style="font-weight:800">Previous Balance: ${money(0)}</div>
+      <div style="margin-top:3px;opacity:.82">No previous amount to receive or pay. / පරණ ශේෂයක් නැහැ.</div>`;
+  }
 }
 function openCustomerTransaction(customerId,type){
   const c=customer(customerId); if(!c?.id)return;
@@ -348,6 +372,63 @@ async function start(session){
   userLabel.textContent=`${session.user.email} · ${isAdmin?'Administrator':'Staff'}`;
   renderNav();await loadAll();go('dashboard');
 }
+function normalizeCustomerPhone(v){
+  let d=String(v||'').replace(/\D/g,'');
+  if(d.startsWith('94')&&d.length===11)d='0'+d.slice(2);
+  return d;
+}
+function customerIdentityKey(c){
+  const phone=normalizeCustomerPhone(c?.phone);
+  if(phone.length>=9)return 'phone:'+phone;
+  const name=String(c?.name||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const email=String(c?.email||'').trim().toLowerCase();
+  return 'name:'+name+'|email:'+email;
+}
+function customerGroupIds(customerId){
+  const c=data.customers.find(x=>String(x.id)===String(customerId));
+  if(!c)return customerId?[String(customerId)]:[];
+  const key=customerIdentityKey(c);
+  return data.customers.filter(x=>customerIdentityKey(x)===key).map(x=>String(x.id));
+}
+async function mergeDuplicateCustomers(){
+  if(!isAdmin||data.customers.length<2)return false;
+  const groups=new Map();
+  for(const c of data.customers){const k=customerIdentityKey(c);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(c)}
+  let changed=false, txChanged=false;
+  const st=catalogState();
+  for(const group of groups.values()){
+    if(group.length<2)continue;
+    group.sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||''))||String(a.id).localeCompare(String(b.id)));
+    const keep=group[0], duplicates=group.slice(1), ids=duplicates.map(x=>String(x.id));
+    const inv=await sb.from('invoices').update({customer_id:keep.id}).in('customer_id',ids);
+    if(inv.error)throw new Error('Could not merge invoice links: '+inv.error.message);
+    const jobs=await sb.from('jobs').update({customer_id:keep.id}).in('customer_id',ids);
+    if(jobs.error)throw new Error('Could not merge job links: '+jobs.error.message);
+    if(Array.isArray(st.customer_transactions)){
+      st.customer_transactions=st.customer_transactions.map(x=>{
+        if(ids.includes(String(x.customer_id))){txChanged=true;return {...x,customer_id:keep.id};}
+        return x;
+      });
+    }
+    for(const id of ids){
+      const del=await sb.from('customers').delete().eq('id',id);
+      if(del.error)throw new Error('Could not remove duplicate customer: '+del.error.message);
+    }
+    changed=true;
+  }
+  if(txChanged&&!await saveCatalog(st))throw new Error('Could not merge customer account history.');
+  return changed;
+}
+function customerOptionsHtml(selectedId=''){
+  const groups=new Map();
+  for(const c of data.customers){const k=customerIdentityKey(c);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(c)}
+  return [...groups.values()].map(g=>{
+    g.sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||'')));
+    const c=g[0], ids=g.map(x=>String(x.id));
+    const selected=selectedId && ids.includes(String(selectedId));
+    return `<option value="${c.id}" ${selected?'selected':''}>${esc(c.name)}${c.phone?' — '+esc(c.phone):''}${g.length>1?' — merged account':''}</option>`;
+  }).join('');
+}
 async function loadAll(){
   syncStatus.textContent='Syncing...';
   let [c,j,i,e,s]=await Promise.all([
@@ -359,6 +440,7 @@ async function loadAll(){
   ]);
   for(const x of [c,j,i,e,s])if(x.error){console.error(x.error);toast(x.error.message)}
   data={customers:c.data||[],jobs:j.data||[],invoices:i.data||[],expenses:e.data||[],settings:s.data||{name:'Studio Redshine',phone:'074 3 17 17 18',address:'',currency:'LKR',logo_data:'',item_catalog:localCatalog()}};
+  if(isAdmin){try{if(await mergeDuplicateCustomers()){const cc=await sb.from('customers').select('*').order('created_at',{ascending:false});if(!cc.error)data.customers=cc.data||[];toast('Duplicate customers merged ✓')}}catch(err){console.error('Customer merge failed',err);toast('Customer duplicate merge failed: '+err.message)}}
   await reconcileCustomerReceiveTransactions();
   bizName.value=data.settings.name||'Studio Redshine';bizPhone.value=data.settings.phone||'';bizAddress.value=data.settings.address||'';currency.value=data.settings.currency||'LKR';logoPreview.innerHTML=data.settings.logo_data?`<img src="${data.settings.logo_data}" style="max-height:70px;max-width:180px;border-radius:8px;border:1px solid var(--line)"><br><span>Current logo</span>`:'No logo uploaded';
   syncStatus.textContent='Cloud synced ✓';
@@ -368,7 +450,7 @@ function customerName(id){return data.customers.find(x=>x.id===id)?.name||'Walk-
 function openModal(t,b){modalTitle.textContent=t;modalBody.innerHTML=b;modal.classList.add('open')}function closeModal(){modal.classList.remove('open')}
 function contactImportControls(type){return `<div class="full" style="margin-top:4px"><div class="row" style="gap:8px;align-items:center"><button type="button" class="secondary" onclick="importPhoneContact('${type}')">📱 Import Phone Contact</button><label class="secondary" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><input type="file" accept=".vcf,text/vcard" style="display:none" onchange="importVCard(event,'${type}')">📇 Choose .vcf</label></div><div class="hint" style="margin-top:5px">On supported phones, Import Phone Contact opens your saved contacts. If unavailable, use a .vcf contact file.</div></div>}`}
 function openCustomer(c=null){openModal(c?'Edit Customer':'New Customer',`<form id="customerForm" onsubmit="saveCustomer(event,'${c?.id||''}')"><div><label>Name</label><input name="name" required value="${esc(c?.name)}"></div>${isAdmin?`<div><label>Phone / WhatsApp</label><input name="phone" value="${esc(c?.phone)}"></div>`:''}<div><label>Email</label><input name="email" value="${esc(c?.email)}"></div><div><label>Address</label><input name="address" value="${esc(c?.address)}"></div>${isAdmin?contactImportControls('customer'):''}<div class="full"><button class="primary">Save</button></div></form>`)}
-async function saveCustomer(e,id){e.preventDefault();let o=Object.fromEntries(new FormData(e.target));let q=id?sb.from('customers').update(o).eq('id',id):sb.from('customers').insert(o);let {error}=await q;if(error)return alert(error.message);closeModal();await loadAll();render()}
+async function saveCustomer(e,id){e.preventDefault();let o=Object.fromEntries(new FormData(e.target));if(!id){const existing=data.customers.find(c=>customerIdentityKey(c)===customerIdentityKey(o));if(existing){closeModal();toast('This customer already exists — existing account kept ✓');return;}}let q=id?sb.from('customers').update(o).eq('id',id):sb.from('customers').insert(o);let {error}=await q;if(error)return alert(error.message);closeModal();await loadAll();render()}
 function openJob(j=null){let opts=data.customers.map(c=>`<option value="${c.id}" ${j?.customer_id===c.id?'selected':''}>${esc(c.name)}${isAdmin && c.phone ? ' — '+esc(c.phone) : ''}</option>`).join('');openModal(j?'Edit Job':'New Job',`<form onsubmit="saveJob(event,'${j?.id||''}')"><div><label>Customer</label><select name="customer_id" required>${opts}</select></div><div><label>Service</label><select name="service"><option>Photography</option><option>Videography</option><option>Printing</option><option>Photo Frame</option><option>Wedding Package</option><option>Other</option></select></div><div><label>Event / Job date</label><input type="date" name="date" value="${j?.date||''}"></div><div><label>Total agreed</label><input type="number" step=".01" name="total" value="${j?.total||0}"></div><div><label>Cost</label><input type="number" step=".01" name="cost" value="${j?.cost||0}"></div><div><label>Status</label><select name="status"><option>Booked</option><option>In Progress</option><option>Completed</option><option>Delivered</option><option>Cancelled</option></select></div><div class="full"><label>Notes</label><textarea name="notes">${esc(j?.notes)}</textarea></div><div class="full"><button class="primary">Save Job</button></div></form>`)}
 async function saveJob(e,id){e.preventDefault();let o=Object.fromEntries(new FormData(e.target));o.total=+o.total;o.cost=+o.cost;let q=id?sb.from('jobs').update(o).eq('id',id):sb.from('jobs').insert(o);let {error}=await q;if(error)return alert(error.message);closeModal();await loadAll()}
 function invoiceItemRow(it){const stock=catalog().find(x=>String(x.name||'').trim().toLowerCase()===String(it.name||'').trim().toLowerCase());const stockText=stock?`Stock: ${Number(stock.qty)||0}${stock.supplier?' • '+esc(stock.supplier):''}${Number(stock.cost||0)>0?` • Buy: ${money(stock.cost)} • Profit: ${money((Number(stock.price)||0)-(Number(stock.cost)||0))}/unit`:''}`:'Not a saved stock item';return `<div class="invoice-item-row row" data-cost="${Number(it.cost)||Number(stock?.cost)||0}" style="margin-bottom:8px;align-items:end"><div class="item-field" style="flex:2;min-width:180px"><label>Item</label><input class="item-name" value="${esc(it.name||'')}" placeholder="Type item name..." autocomplete="off" oninput="invoiceItemNameInput(this)" onfocus="invoiceItemNameInput(this)"><div class="suggestions"></div><div class="stock-info hint" style="margin-top:4px">${stockText}</div></div><div style="width:95px"><label>Qty</label><input class="item-qty" type="number" min="1" step="1" value="${Math.max(1,Math.round(Number(it.qty)||1))}" oninput="updateInvoiceTotals()"></div><div style="width:140px"><label>Unit Price</label><input class="item-price" type="number" min="0" step="0.01" value="${Number(it.price)||0}" oninput="updateInvoiceTotals()"></div><button type="button" class="secondary" onclick="saveItemFromInvoice(this)">Save Item</button><button type="button" class="danger" onclick="removeInvoiceItem(this)">Remove</button></div>`}
@@ -467,7 +549,7 @@ function nextInvoiceNo(){const y=new Date().getFullYear();const nums=data.invoic
 function refreshInvoiceCustomerSelect(selectedId=''){
   const sel=document.querySelector('#invoiceForm select[name="customer_id"]');
   if(!sel)return;
-  sel.innerHTML='<option value="">— No customer / Walk-in —</option>'+data.customers.map(c=>`<option value="${c.id}">${esc(c.name)}${c.phone?' — '+esc(c.phone):''}</option>`).join('');
+  sel.innerHTML='<option value="">— No customer / Walk-in —</option>'+customerOptionsHtml(selectedId);
   sel.value=selectedId||'';
 }
 function toggleInlineCustomer(){document.getElementById('inlineCustomerBox')?.classList.toggle('open')}
@@ -476,6 +558,8 @@ async function saveInlineCustomer(){
   const o={name:box?.querySelector('[name="name"]')?.value||'',phone:box?.querySelector('[name="phone"]')?.value||'',email:box?.querySelector('[name="email"]')?.value||'',address:box?.querySelector('[name="address"]')?.value||''};
   o.name=String(o.name||'').trim();
   if(!o.name)return alert('Customer name is required.');
+  const existing=data.customers.find(c=>customerIdentityKey(c)===customerIdentityKey(o));
+  if(existing){refreshInvoiceCustomerSelect(existing.id);document.getElementById('inlineCustomerBox')?.classList.remove('open');box?.querySelectorAll('input').forEach(x=>x.value='');toast('Existing customer selected ✓');return;}
   const {data:created,error}=await sb.from('customers').insert(o).select('*').single();
   if(error)return alert(error.message);
   data.customers.unshift(created);
@@ -494,8 +578,8 @@ function openInvoice(inv=null){
   openModal(inv?'Edit Invoice':'New Invoice',`<form id="invoiceForm" data-invoice-id="${inv?.id||''}" onsubmit="saveInvoice(event,'${inv?.id||''}')">
   <div><label>Invoice No.</label><input name="invoice_no" value="${esc(invNo)}" readonly></div>
   <div><label>Invoice Date</label><input type="date" name="invoice_date" value="${d}" required></div>
-  <div><label>Customer <span class="hint">(optional)</span></label><div class="row"><select name="customer_id" style="flex:1" onchange="updateInvoicePreviousBalance(this.value)"><option value="">— No customer / Walk-in —</option>${data.customers.map(c=>`<option value="${c.id}" ${inv?.customer_id===c.id?'selected':''}>${esc(c.name)}${c.phone?' — '+esc(c.phone):''}</option>`).join('')}</select><button type="button" class="secondary" onclick="toggleInlineCustomer()">+ New Customer</button></div>
-  <div id="invoicePreviousBalance" class="hint" style="margin-top:7px;padding:9px 11px;border:1px solid var(--line);border-radius:9px">${previousText}${initialCredit>0?`<br>Credit that can be applied to this invoice: <b>${money(initialCredit)}</b>`:''}</div>
+  <div><label>Customer <span class="hint">(optional)</span></label><div class="row"><select name="customer_id" style="flex:1" onchange="updateInvoicePreviousBalance(this.value)"><option value="">— No customer / Walk-in —</option>${customerOptionsHtml(inv?.customer_id||'')}</select><button type="button" class="secondary" onclick="toggleInlineCustomer()">+ New Customer</button></div>
+  <div id="invoicePreviousBalance" class="hint" style="margin-top:9px;padding:12px 14px;border:1px dashed var(--line);border-radius:10px">Select a customer to see previous account balance / credit.</div>
   <div id="inlineCustomerBox" class="inline-customer"><div class="grid"><div><label>Name</label><input name="name" placeholder="Customer name"></div><div><label>Phone / WhatsApp</label><input name="phone" placeholder="07XXXXXXXX"></div><div><label>Email</label><input name="email"></div><div><label>Address</label><input name="address"></div></div><div class="row" style="margin-top:10px"><button type="button" class="primary" onclick="saveInlineCustomer()">Save Customer</button><button type="button" class="secondary" onclick="toggleInlineCustomer()">Cancel</button></div></div></div>
   <div><label>Due date</label><input type="date" name="due_date" value="${inv?.due_date||''}"></div>
   <div><label>Payment method</label><select name="payment_method"><option ${inv?.payment_method==='Cash'?'selected':''}>Cash</option><option ${inv?.payment_method==='Bank Transfer'?'selected':''}>Bank Transfer</option><option ${inv?.payment_method==='Card'?'selected':''}>Card</option><option ${inv?.payment_method==='Online'?'selected':''}>Online</option><option ${inv?.payment_method==='Other'?'selected':''}>Other</option></select></div>
@@ -505,7 +589,10 @@ function openInvoice(inv=null){
   ${inv?`<div class="full card" style="padding:12px"><div class="space"><b>Payment History</b><b>Total Paid: ${money(paymentTotal(inv))}</b></div>${paymentHistoryHtml(inv)}</div>`:''}
   <div class="full"><label>Notes</label><textarea name="notes" placeholder="Thank you / payment note / delivery note">${esc(cleanInvoiceNotes(inv?.notes))}</textarea></div>
   <div class="full card" style="padding:12px;margin-top:2px"><div class="space"><span>Subtotal</span><b id="invoiceSubtotal">${money(items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0))}</b></div><div class="space"><span>Discount</span><b id="invoiceDiscountView">${money(Number(inv?.discount)||0)}</b></div><div class="space"><span>Total</span><b id="invoiceTotal">${money(Math.max(0,items.reduce((s,x)=>s+(Number(x.qty)||0)*(Number(x.price)||0),0)-(Number(inv?.discount)||0)))}</b></div><div class="space"><span>Credit applied</span><b id="invoiceCreditApplied">${money(initialCredit)}</b></div><div class="space"><span>New payment</span><b id="invoiceNewPayment">${money(0)}</b></div><div class="space"><span>Total paid</span><b id="invoiceTotalPaid">${money(paymentTotal(inv||{}))}</b></div><div class="space"><span>Balance / Change</span><b id="invoiceBalance">${money(Math.abs(Number(inv?.balance)||0))}</b></div><div id="overpaidNotice" style="display:none;margin-top:8px;padding:10px;border-radius:10px;background:#7c3aed;color:#fff;font-weight:800"></div></div>
-  <div class="full"><button class="primary">Save Invoice</button></div></form>`); updateInvoiceTotals();
+  <div class="full"><button class="primary">Save Invoice</button></div></form>`);
+  updateInvoiceTotals();
+  updateInvoicePreviousBalance(inv?.customer_id||'');
+
 }
 function addInvoiceItem(){const box=document.getElementById('invoiceItemRows');if(!box)return;box.insertAdjacentHTML('beforeend',invoiceItemRow({name:'',qty:1,price:0}));updateInvoiceTotals()}
 function removeInvoiceItem(btn){const rows=document.querySelectorAll('#invoiceItemRows .invoice-item-row');if(rows.length<=1){alert('At least one invoice item is required.');return}btn.closest('.invoice-item-row').remove();updateInvoiceTotals()}
