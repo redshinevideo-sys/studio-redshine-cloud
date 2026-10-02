@@ -490,9 +490,74 @@ table th,table td{padding:7px 8px!important;font-size:11px!important}
   .rs-invoice-summary{max-height:200px!important}
 }
 
+/* ===== Studio Redshine V8 — Robust invoice item layout ===== */
+.rs-invoice-items .invoice-item-row{box-sizing:border-box;grid-auto-flow:row!important;overflow:visible!important}
+.rs-invoice-items .invoice-item-row>div,.rs-invoice-items .invoice-item-row>button{min-width:0!important;box-sizing:border-box!important}
+.rs-invoice-items .invoice-item-row .item-field{position:relative;z-index:2}
+@media(max-width:760px){
+  .rs-invoice-items .invoice-item-row{
+    grid-template-columns:minmax(0,1fr) 66px 105px 72px!important;
+    grid-template-rows:auto auto!important;
+    gap:5px!important;
+    align-items:end!important;
+  }
+  .rs-invoice-items .invoice-item-row .item-field{
+    grid-column:1 / -1!important;
+    grid-row:1!important;
+    width:auto!important;
+  }
+  .rs-invoice-items .invoice-item-row>div:nth-child(2){
+    grid-column:1!important;grid-row:2!important;width:auto!important;
+  }
+  .rs-invoice-items .invoice-item-row>div:nth-child(3){
+    grid-column:2!important;grid-row:2!important;width:auto!important;
+  }
+  .rs-invoice-items .invoice-item-row>button:nth-of-type(1){
+    grid-column:3!important;grid-row:2!important;width:100%!important;
+  }
+  .rs-invoice-items .invoice-item-row>button:nth-of-type(2){
+    grid-column:4!important;grid-row:2!important;width:100%!important;
+  }
+  .rs-invoice-items .invoice-item-row input{height:35px!important}
+  .rs-invoice-items .invoice-item-row button{height:35px!important;padding:5px 6px!important;font-size:10px!important;white-space:nowrap!important}
+  .rs-invoice-items .stock-info{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+}
+@media(max-width:520px){
+  .rs-invoice-items .invoice-item-row{
+    grid-template-columns:minmax(0,1fr) 54px 90px 62px!important;
+    gap:4px!important;
+  }
+  .rs-invoice-items .invoice-item-row input{height:34px!important}
+  .rs-invoice-items .invoice-item-row button{height:34px!important;font-size:9px!important;padding:5px 4px!important}
+}
+
 </style>
 
-</head>
+
+<style id="rs-invoice-suggestion-fix-v9">
+/* Invoice item autocomplete must float above the compact invoice workspace.
+   The item list lives inside scroll/hidden containers, so the dropdown is positioned
+   against the viewport while typing instead of being clipped by its parent. */
+.rs-invoice-items .item-field{position:relative!important;overflow:visible!important}
+.rs-invoice-items .suggestions{
+  position:fixed!important;
+  z-index:100000!important;
+  width:auto!important;
+  min-width:220px;
+  max-width:min(460px,calc(100vw - 20px));
+  max-height:280px!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  margin-top:0!important;
+  background:#0d0c10!important;
+  border:1px solid #4b3440!important;
+  border-radius:9px!important;
+  box-shadow:0 18px 45px rgba(0,0,0,.72)!important;
+}
+.rs-invoice-items .suggestions button{min-height:38px!important}
+</style>
+
+<style id="income-job-payment-fix-v11">.job-income-note{font-size:12px;color:#9ca3af;margin-top:4px}</style></head>
 <body>
 <div id="login">
   <div class="loginbox">
@@ -875,12 +940,39 @@ async function openJobPayment(id){
 }
 async function saveJobPayment(e,id){e.preventDefault();const j=data.jobs.find(x=>x.id===id);if(!j)return;const f=new FormData(e.target),amount=Math.max(0,Number(f.get('amount'))||0),bal=jobBalance(j);if(!amount||amount>bal+0.001)return alert('Enter a valid amount up to the remaining balance.');const st=catalogState();st.job_payments=Array.isArray(st.job_payments)?st.job_payments:[];const existingStored=st.job_payments.filter(x=>String(x.job_id)===String(id));if(!existingStored.length){jobPayments(j).forEach(x=>st.job_payments.push({id:crypto.randomUUID(),job_id:id,customer_id:j.customer_id||null,date:x.date||String(j.date||todayISO()).slice(0,10),amount:Number(x.amount)||0,method:x.method||'Cash',note:x.note||'Migrated payment'}));}st.job_payments.push({id:crypto.randomUUID(),job_id:id,customer_id:j.customer_id||null,date:f.get('date')||todayISO(),amount,method:String(f.get('method')||'Cash'),note:String(f.get('note')||'').trim()});if(!await saveCatalog(st))return;const newBal=Math.max(0,Number(j.total||0)-jobPaymentTotal(j));if(newBal===0&&j.status!=='Completed'){const q=await sb.from('jobs').update({status:'Completed'}).eq('id',id).select('id,status').maybeSingle();if(q.error)return alert(q.error.message)}closeModal();await loadAll();render();toast('Job payment saved and balance updated ✓')}
 function invoiceItemRow(it){const stock=catalog().find(x=>String(x.name||'').trim().toLowerCase()===String(it.name||'').trim().toLowerCase());const stockText=stock?`Stock: ${Number(stock.qty)||0}${stock.supplier?' • '+esc(stock.supplier):''}${Number(stock.cost||0)>0?` • Buy: ${money(stock.cost)} • Profit: ${money((Number(stock.price)||0)-(Number(stock.cost)||0))}/unit`:''}`:'Not a saved stock item';return `<div class="invoice-item-row row" data-cost="${Number(it.cost)||Number(stock?.cost)||0}" style="margin-bottom:8px;align-items:end"><div class="item-field" style="flex:2;min-width:180px"><label>Item</label><input class="item-name" value="${esc(it.name||'')}" placeholder="Type item name..." autocomplete="off" oninput="invoiceItemNameInput(this)" onfocus="invoiceItemNameInput(this)"><div class="suggestions"></div><div class="stock-info hint" style="margin-top:4px">${stockText}</div></div><div style="width:95px"><label>Qty</label><input class="item-qty" type="number" min="1" step="1" value="${Math.max(1,Math.round(Number(it.qty)||1))}" oninput="updateInvoiceTotals()"></div><div style="width:140px"><label>Unit Price</label><input class="item-price" type="number" min="0" step="0.01" value="${Number(it.price)||0}" oninput="updateInvoiceTotals()"></div><button type="button" class="secondary" onclick="saveItemFromInvoice(this)">Save Item</button><button type="button" class="danger" onclick="removeInvoiceItem(this)">Remove</button></div>`}
+function positionInvoiceSuggestionBox(input, box){
+  if(!input||!box)return;
+  const r=input.getBoundingClientRect();
+  const gap=4;
+  const viewportPad=10;
+  const desiredWidth=Math.max(r.width,220);
+  const maxWidth=Math.min(460,window.innerWidth-(viewportPad*2));
+  const width=Math.min(desiredWidth,maxWidth);
+  let left=Math.max(viewportPad,Math.min(r.left,window.innerWidth-width-viewportPad));
+  let top=r.bottom+gap;
+  const maxHeight=Math.min(280,Math.max(120,window.innerHeight-top-viewportPad));
+  // When there is not enough room below, open upward.
+  if(maxHeight<120 && r.top>180){
+    top=Math.max(viewportPad,r.top-gap-Math.min(280,r.top-viewportPad));
+  }
+  box.style.left=Math.round(left)+'px';
+  box.style.top=Math.round(top)+'px';
+  box.style.width=Math.round(width)+'px';
+  box.style.maxHeight=Math.round(Math.max(120,maxHeight))+'px';
+}
+function refreshInvoiceSuggestionPositions(){
+  document.querySelectorAll('.rs-invoice-items .item-name').forEach(input=>{
+    const box=input.parentElement.querySelector('.suggestions');
+    if(box && box.innerHTML.trim()) positionInvoiceSuggestionBox(input,box);
+  });
+}
 function invoiceItemNameInput(input){
   const q=input.value.trim().toLowerCase(); const box=input.parentElement.querySelector('.suggestions');
   if(!q){box.innerHTML='';return}
   const all=catalog();
   const matches=[...all.filter(x=>String(x.name||'').toLowerCase().startsWith(q)),...all.filter(x=>!String(x.name||'').toLowerCase().startsWith(q)&&String(x.name||'').toLowerCase().includes(q))].slice(0,8);
   box.innerHTML=matches.map(x=>`<button type="button" onclick='pickInvoiceItem(this, ${JSON.stringify(x.name)}, ${Number(x.price)||0}, ${Number(x.cost)||0})'><span>${esc(x.name)} <small style="opacity:.75">Stock: ${Number(x.qty)||0}</small></span><span class="item-price-small">${money(x.price)}</span></button>`).join('');
+  positionInvoiceSuggestionBox(input,box);
 }
 function pickInvoiceItem(btn,name,price,cost){const row=btn.closest('.invoice-item-row');row.querySelector('.item-name').value=name;row.querySelector('.item-price').value=Number(price)||0;row.dataset.cost=Number(cost)||0;row.querySelector('.suggestions').innerHTML='';const stock=catalog().find(x=>String(x.name||'').trim().toLowerCase()===String(name).trim().toLowerCase());row.dataset.cost=Number(stock?.cost)||0;const info=row.querySelector('.stock-info');if(info)info.innerHTML=stock?`Stock: ${Number(stock.qty)||0}${stock.supplier?' • '+esc(stock.supplier):''}${Number(stock.cost||0)>0?` • Buy: ${money(stock.cost)} • Profit: ${money((Number(stock.price)||0)-(Number(stock.cost)||0))}/unit`:''}`:'Not a saved stock item';updateInvoiceTotals()}
 async function saveCatalog(nextState){
@@ -1147,6 +1239,56 @@ function showExpenseBreakdown(){
   const body=rows.map(r=>`<tr><td><b>${r[0]}</b><br><span class="muted">${r[1]}</span></td><td style="text-align:right"><b>${money(round2(r[2]))}</b></td></tr>`).join('');
   openModal('💸 Total Expenses — Breakdown',`<div class="card" style="margin-bottom:12px"><div class="muted">Total business expenses</div><div class="kpi">${money(b.total)}</div><div class="hint">Job direct costs are included here once. Do not enter the same job cost again in Expenses.</div></div><table><tr><th>Expense type</th><th style="text-align:right">Amount</th></tr>${body}<tr><td><b style="font-size:16px">TOTAL EXPENSES</b></td><td style="text-align:right"><b style="font-size:18px">${money(b.total)}</b></td></tr></table>`);
 }
+function incomeRowsForPeriod(period,key){
+  const matchDate=(value)=>{
+    const raw=String(value||'');
+    if(!isRecognizedBusinessDate(raw)) return false;
+    return period==='daily'?raw.slice(0,10)===key:period==='monthly'?raw.slice(0,7)===key:raw.slice(0,4)===key;
+  };
+  // Detail rows also follow the same cash-basis rule: each actual payment is one income record.
+  const invoiceRows=[];
+  for(const inv of data.invoices){
+    for(const pay of invoicePayments(inv)){
+      const payDate=String(pay.date||invoiceDate(inv)||'').slice(0,10);
+      if(matchDate(payDate) && Number(pay.amount)>0){
+        invoiceRows.push({date:payDate,type:'Invoice Payment',ref:inv.invoice_no||inv.id?.slice(0,8)||'-',customer:customerName(inv.customer_id)||'Walk-in / No Customer',amount:Math.max(0,Number(pay.amount)||0),method:pay.method||'Cash'});
+      }
+    }
+  }
+  const jobRows=[];
+  for(const j of data.jobs){
+    for(const pay of jobPayments(j)){
+      const payDate=String(pay.date||j.date||j.created_at||'').slice(0,10);
+      if(matchDate(payDate) && Number(pay.amount)>0){
+        jobRows.push({date:payDate,type:'Job Payment',ref:j.service||j.id?.slice(0,8)||'-',customer:customerName(j.customer_id)||'Walk-in / No Customer',amount:Math.max(0,Number(pay.amount)||0),method:pay.method||'Cash'});
+      }
+    }
+  }
+  const invoiceTotal=round2(invoiceRows.reduce((s,x)=>s+x.amount,0));
+  const jobTotal=round2(jobRows.reduce((s,x)=>s+x.amount,0));
+  const rows=[...invoiceRows,...jobRows].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const invoiceIds=[...new Set(invoiceRows.map(x=>x.ref))];
+  const jobIds=[...new Set(jobRows.map(x=>x.ref))];
+  return {invoices:invoiceIds,jobs:jobIds,jobRows,jobIds,invoiceTotal,jobTotal,total:round2(invoiceTotal+jobTotal),rows};
+}
+
+function showIncomeBreakdownPeriod(period,key){
+  const d=incomeRowsForPeriod(period,key);
+  const title=period==='daily'?'Daily Income':period==='monthly'?'Monthly Income':'Yearly Income';
+  const detailRows=d.rows.slice(0,60).map(r=>`<tr><td>${esc(r.date||'-')}</td><td><span class="badge">${esc(r.type)}</span></td><td>${esc(r.ref)}</td><td>${esc(r.customer)}</td><td style="text-align:right"><b>${money(r.amount)}</b></td></tr>`).join('');
+  const more=d.rows.length>60?`<div class="hint" style="margin-top:8px">Showing latest 60 income records. Total above includes all recognized records.</div>`:'';
+  openModal(`💰 ${title} — Details`,
+    `<div class="grid" style="margin-bottom:12px">`+
+      `<div class="card"><div class="muted">Invoice Payments</div><div class="kpi">${money(d.invoiceTotal)}</div><div class="hint">${d.invoices.length} invoice${d.invoices.length===1?'':'s'}</div></div>`+
+      `<div class="card"><div class="muted">Job / Order Payments</div><div class="kpi">${money(d.jobTotal)}</div><div class="hint">${d.jobs.length} job${d.jobs.length===1?'':'s'}</div></div>`+
+      `<div class="card"><div class="muted">Total Income</div><div class="kpi">${money(d.total)}</div><div class="hint">Recognized income only</div></div>`+
+    `</div>`+
+    `<div class="card"><div class="space"><h3>Income Transactions</h3><span class="hint">Invoice Payments + Job Payments</span></div>`+
+    `<table><tr><th>Date</th><th>Type</th><th>Ref / Job</th><th>Customer</th><th style="text-align:right">Amount</th></tr>${detailRows||'<tr><td colspan="5">No recognized income for this period.</td></tr>'}</table>${more}</div>`+
+    `<div class="hint" style="margin-top:10px">Invoice income uses actual invoice payments by payment date; unpaid invoice balance is not counted as income. Job income uses actual job payments/advances by payment date; unpaid job balance is not counted as income. Future-dated payments are excluded.</div>`
+  );
+}
+function showIncomeBreakdownYtd(){ showIncomeBreakdownPeriod('yearly',String(Number(thisYearISO()))); }
 function monthKey(year,month){return `${year}-${String(month).padStart(2,'0')}`;}
 function ytdMetricsForYear(year){
   const y=Number(year);
@@ -1189,7 +1331,7 @@ function renderDashboard(){
   );
   kpis.innerHTML=`<div class="dashboard-kpi-layout">
     <div class="dashboard-kpi-main">
-      <div class="card dashboard-kpi-card"><div class="muted">💰 Total Income <span class="hint">· ${year} YTD</span></div><div class="kpi">${money(ytd.inc)}</div></div>
+      <div class="card dashboard-kpi-card" role="button" tabindex="0" onclick="showIncomeBreakdownYtd()" onkeydown="if(event.key==='Enter'||event.key===' ')showIncomeBreakdownYtd()" title="View income breakdown"><div class="muted">💰 Total Income <span class="hint">· ${year} YTD · tap for details</span></div><div class="kpi">${money(ytd.inc)}</div><div class="dashboard-kpi-side-note">Invoice sales + job payments</div></div>
       <div class="card dashboard-kpi-card" role="button" tabindex="0" onclick="showExpenseBreakdown()" onkeydown="if(event.key==='Enter'||event.key===' ')showExpenseBreakdown()" title="View expense breakdown"><div class="muted">💸 Total Expenses <span class="hint">· ${year} YTD · tap for details</span></div><div class="kpi">${money(ytd.ex)}</div></div>
       <div class="card dashboard-kpi-card" role="button" tabindex="0" onclick="showYtdBreakdown()" onkeydown="if(event.key==='Enter'||event.key===' ')showYtdBreakdown()" title="View YTD reconciliation"><div class="muted">🟢 Net Profit <span class="hint">· ${year} YTD</span></div><div class="kpi">${money(ytd.net)}</div><div class="hint" style="margin-top:3px">${money(ytd.inc)} − ${money(ytd.ex)}</div></div>
     </div>
@@ -1291,15 +1433,19 @@ function reportMetricsForPeriod(period, key){
     if(!isRecognizedBusinessDate(raw)) return false;
     return period==='daily'?raw.slice(0,10)===key:period==='monthly'?raw.slice(0,7)===key:raw.slice(0,4)===key;
   };
-  const invoices=data.invoices.filter(x=>matchDate(invoiceDate(x)));
-  const jobs=data.jobs.filter(x=>matchDate(x.date||x.created_at));
-  const inc=round2(invoices.reduce((s,x)=>s+Number(x.total||0),0)+jobs.reduce((s,x)=>s+Number(x.total||0),0));
+  // Accounting rule: income is recognized only when money is actually received.
+  // Scan every invoice/job and use the payment date (not the original document date).
+  const invoiceIncome=round2(data.invoices.reduce((sum,inv)=>sum+invoicePayments(inv)
+    .filter(p=>matchDate(p.date||invoiceDate(inv))&&Number(p.amount)>0)
+    .reduce((s,p)=>s+Math.max(0,Number(p.amount)||0),0),0));
+  const jobIncome=round2(data.jobs.reduce((sum,j)=>sum+jobPayments(j)
+    .filter(p=>matchDate(p.date||j.date||j.created_at)&&Number(p.amount)>0)
+    .reduce((s,p)=>s+Math.max(0,Number(p.amount)||0),0),0));
+  const inc=round2(invoiceIncome+jobIncome);
   const b=expenseBreakdownForPeriod(period,key);
-  const colInv=data.invoices.reduce((s,x)=>s+invoicePayments(x).filter(p=>matchDate(p.date||invoiceDate(x))).reduce((a,p)=>a+Math.max(0,Number(p.amount)||0),0),0);
-  const colJob=data.jobs.reduce((s,x)=>s+jobPayments(x).filter(p=>matchDate(p.date||x.date)).reduce((a,p)=>a+Math.max(0,Number(p.amount)||0),0),0);
-  const col=round2(colInv+colJob);
+  const col=round2(invoiceIncome+jobIncome);
   const net=round2(inc-b.total);
-  return {inc,col,ex:b.total,gp:net,jobCost:b.jobDirect,materials:b.materials,salary:b.salary,rent:b.rent,electricity:b.electricity,transport:b.transport,other:b.other,net};
+  return {inc,col,ex:b.total,gp:net,jobCost:b.jobDirect,materials:b.materials,salary:b.salary,rent:b.rent,electricity:b.electricity,transport:b.transport,other:b.other,invoiceIncome,jobIncome,net};
 }
 
 function renderReportChart(period, labels, values){
@@ -1441,9 +1587,9 @@ function renderReports(){
   const vals=keys.map(k=>period==='yearly'?ytdMetricsForYear(Number(k)):reportMetricsForPeriod(period,k));
   const currentKey=period==='daily'?todayISO():period==='monthly'?selectedMonth:String(Number(thisYearISO()));
   const cur=period==='yearly'?ytdMetricsForYear(Number(currentKey)):reportMetricsForPeriod(period,currentKey);
-  reportKpis.innerHTML=[['Total Income',money(cur.inc)],['Cash Collected',money(cur.col)],['Total Expenses',money(cur.ex)],['Net Profit',money(cur.net)]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="kpi">${x[1]}</div></div>`).join('');
+  reportKpis.innerHTML=`<div class="card dashboard-kpi-card" role="button" tabindex="0" onclick="showIncomeBreakdownPeriod('${period}','${currentKey}')" onkeydown="if(event.key==='Enter'||event.key===' ')showIncomeBreakdownPeriod('${period}','${currentKey}')" title="View income details"><div class="muted">💰 Total Income <span class="hint">· tap for details</span></div><div class="kpi">${money(cur.inc)}</div><div class="hint">Invoices + Jobs</div></div><div class="card"><div class="muted">💵 Cash Collected</div><div class="kpi">${money(cur.col)}</div></div><div class="card dashboard-kpi-card" role="button" tabindex="0" onclick="showExpenseBreakdownPeriod('${period}','${currentKey}')" onkeydown="if(event.key==='Enter'||event.key===' ')showExpenseBreakdownPeriod('${period}','${currentKey}')" title="View expense details"><div class="muted">💸 Total Expenses <span class="hint">· tap for details</span></div><div class="kpi">${money(cur.ex)}</div></div><div class="card"><div class="muted">🟢 Net Profit</div><div class="kpi">${money(cur.net)}</div></div>`;
   reportChart.innerHTML=renderReportChart(period,labels,vals);
-  reportBody.innerHTML=`<p><b>View:</b> ${period==='daily'?'Daily — '+selectedMonth:period==='monthly'?'Monthly — '+selectedMonth:'Yearly — '+currentKey}</p><p>Total income: <b>${money(cur.inc)}</b></p><p>Cash collected: <b>${money(cur.col)}</b></p><p>Total expenses: <b>${money(cur.ex)}</b></p><p>Net profit: <b>${money(cur.net)}</b></p><div class="card" style="margin-top:12px"><div class="space"><h3>Expense Breakdown</h3><button class="secondary" onclick="showExpenseBreakdownPeriod('${period}','${currentKey}')">View details</button></div><p>Job direct costs: <b>${money(cur.jobCost)}</b></p><p>Materials / items: <b>${money(cur.materials)}</b></p><p>Employee salary: <b>${money(cur.salary)}</b></p><p>Rent: <b>${money(cur.rent)}</b></p><p>Electricity: <b>${money(cur.electricity)}</b></p><p>Transport: <b>${money(cur.transport)}</b></p><p>Other business expenses: <b>${money(cur.other)}</b></p></div>`;
+  reportBody.innerHTML=`<p><b>View:</b> ${period==='daily'?'Daily — '+selectedMonth:period==='monthly'?'Monthly — '+selectedMonth:'Yearly — '+currentKey}</p><div class="card" style="margin-top:12px"><div class="space"><h3>Income Breakdown</h3><button class="secondary" onclick="showIncomeBreakdownPeriod('${period}','${currentKey}')">View details</button></div><p>Invoice Sales: <b>${money(incomeRowsForPeriod(period,currentKey).invoiceTotal)}</b></p><p>Job / Order Payments: <b>${money(incomeRowsForPeriod(period,currentKey).jobTotal)}</b></p><p>Total Income: <b>${money(cur.inc)}</b></p></div><p>Cash collected: <b>${money(cur.col)}</b></p><p class="hint">For Jobs / Orders, Income = actual advance / payments received. The remaining job balance is not counted as income until paid.</p><div class="card" style="margin-top:12px"><div class="space"><h3>Expense Breakdown</h3><button class="secondary" onclick="showExpenseBreakdownPeriod('${period}','${currentKey}')">View details</button></div><p>Job direct costs: <b>${money(cur.jobCost)}</b></p><p>Materials / items: <b>${money(cur.materials)}</b></p><p>Employee salary: <b>${money(cur.salary)}</b></p><p>Rent: <b>${money(cur.rent)}</b></p><p>Electricity: <b>${money(cur.electricity)}</b></p><p>Transport: <b>${money(cur.transport)}</b></p><p>Other business expenses: <b>${money(cur.other)}</b></p></div><p>Net profit: <b>${money(cur.net)}</b></p>`;
 }
 function renderReminders(){let r=data.invoices.filter(i=>i.balance>0);reminderTable.innerHTML=r.length?`<table><tr><th>Customer</th><th>Invoice</th><th>Balance</th><th>Due</th><th></th></tr>${r.map(i=>`<tr><td>${esc(customerName(i.customer_id))}</td><td>${i.invoice_no||''}</td><td>${money(i.balance)}</td><td>${i.due_date||'-'}</td><td>${esc(i.payment_method||'-')}</td><td><button class="secondary" onclick="waReminder('${i.id}')">Send WhatsApp</button></td></tr>`).join('')}</table>`:'<div class="empty">No outstanding invoices 🎉</div>'}
 function printInvoice(id){let i=data.invoices.find(x=>x.id===id),c=customer(i.customer_id),logo=data.settings.logo_data?`<img src="${data.settings.logo_data}" style="max-height:75px;max-width:190px;object-fit:contain">`:'';printArea.innerHTML=`<div class="invoice"><div class="top"><div>${logo}<h1>${esc(data.settings.name)}</h1><div>${esc(data.settings.address||'')}</div><div>${esc(data.settings.phone||'')}</div></div><div style="text-align:right"><b style="font-size:20px">INVOICE</b><br><b>${esc(i.invoice_no||'')}</b><br>${new Date(invoiceDate(i)+'T00:00:00').toLocaleDateString('en-GB')}<br>${i.due_date?'Due: '+esc(i.due_date):''}</div></div><h3>Bill To</h3><p><b>${esc(c.name)}</b><br>${esc(c.phone||'')}<br>${esc(c.email||'')}<br>${esc(c.address||'')}</p><table><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>${i.items.map(x=>`<tr><td>${esc(x.name)}</td><td>${x.qty}</td><td>${money(x.price)}</td><td>${money(x.qty*x.price)}</td></tr>`).join('')}</table><div style="margin-top:15px;text-align:right"><div>Subtotal: <b>${money(i.items.reduce((s,x)=>s+x.qty*x.price,0))}</b></div><div>Discount: <b>${money(i.discount)}</b></div><div style="font-size:20px;margin-top:6px">Total: <b>${money(i.total)}</b></div><div>Paid / Advance: <b>${money(i.paid)}</b></div><div class="total">Balance: ${money(i.balance)}</div></div><p>Payment method: <b>${esc(i.payment_method||'')}</b></p>${cleanInvoiceNotes(i.notes)?`<p><b>Notes:</b> ${esc(cleanInvoiceNotes(i.notes))}</p>`:''}<p style="margin-top:55px;border-top:1px solid #ddd;padding-top:12px">Thank you for choosing ${esc(data.settings.name)}.</p></div>`;window.print()}
@@ -1501,6 +1647,14 @@ async function clearAllBusinessData(){
 }
 function exportBackup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='studio-redshine-cloud-backup.json';a.click()}
 boot();
+</script>
+<script>
+(function(){
+  let t=0;
+  const refresh=()=>{clearTimeout(t);t=setTimeout(refreshInvoiceSuggestionPositions,10)};
+  window.addEventListener('resize',refresh,{passive:true});
+  window.addEventListener('scroll',refresh,{passive:true,capture:true});
+})();
 </script>
 </body>
 </html>
