@@ -557,7 +557,56 @@ table th,table td{padding:7px 8px!important;font-size:11px!important}
 .rs-invoice-items .suggestions button{min-height:38px!important}
 </style>
 
-<style id="income-job-payment-fix-v11">.job-income-note{font-size:12px;color:#9ca3af;margin-top:4px}</style></head>
+<style id="income-job-payment-fix-v11">.job-income-note{font-size:12px;color:#9ca3af;margin-top:4px}
+.rs-new-item-popup{max-width:620px;margin:0 auto}
+.rs-new-item-popup .popup-kicker{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--gold,#f5c542);margin-bottom:12px}
+.rs-new-item-popup .popup-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rs-new-item-popup .popup-grid .full{grid-column:1/-1}
+.rs-new-item-popup input{width:100%;box-sizing:border-box}
+@media(max-width:700px){.rs-new-item-popup .popup-grid{grid-template-columns:1fr}}
+</style>
+<style id="rs-invoice-clean-item-fix-v2">
+/* Hide the empty autocomplete shell — it was creating the thin stray line under every item row. */
+.rs-invoice-items .suggestions:empty{display:none!important;border:0!important;height:0!important;margin:0!important;padding:0!important;box-shadow:none!important}
+
+/* Compact the New Item popup so it only uses the space its content needs. */
+body:has(.rs-new-item-popup) .modalbox{
+  width:min(520px,92vw)!important;
+  max-width:520px!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:calc(100vh - 40px)!important;
+  overflow:visible!important;
+  padding:14px!important;
+}
+body:has(.rs-new-item-popup) #modalBody{
+  flex:0 0 auto!important;
+  min-height:0!important;
+  height:auto!important;
+  overflow:visible!important;
+}
+body:has(.rs-new-item-popup) .rs-new-item-popup{
+  max-width:none!important;
+  margin:0!important;
+}
+body:has(.rs-new-item-popup) .rs-new-item-popup .popup-kicker{
+  margin-bottom:7px!important;
+}
+body:has(.rs-new-item-popup) .rs-new-item-popup .popup-grid{
+  gap:7px!important;
+}
+body:has(.rs-new-item-popup) .rs-new-item-popup label{
+  margin-bottom:3px!important;
+}
+body:has(.rs-new-item-popup) .rs-new-item-popup input{
+  min-height:36px!important;
+  height:36px!important;
+}
+body:has(.rs-new-item-popup) .rs-new-item-popup .hint{
+  line-height:1.25!important;
+}
+</style>
+</head>
 <body>
 <div id="login">
   <div class="loginbox">
@@ -1000,26 +1049,83 @@ function checkInvoiceStock(items,state,editingOld){
 }
 async function saveItemFromInvoice(btn){
   const row=btn.closest('.invoice-item-row');
-  const name=row.querySelector('.item-name').value.trim();
-  const price=Number(row.querySelector('.item-price').value)||0;
-  const qty=Math.max(1,Math.round(Number(row.querySelector('.item-qty').value)||1));
+  const name=row?.querySelector('.item-name')?.value?.trim()||'';
   if(!name)return alert('Enter an item name first.');
+  openNewInvoiceItemModal(name);
+}
+let pendingInvoiceItemDraft=null;
+function captureInvoiceDraft(){
+  const form=document.getElementById('invoiceForm'); if(!form)return null;
+  const invId=form.getAttribute('data-invoice-id')||'';
+  const original=invId?data.invoices.find(x=>x.id===invId):null;
+  return {
+    id:invId, original,
+    invoice_no:form.querySelector('[name=invoice_no]')?.value||'',
+    invoice_date:form.querySelector('[name=invoice_date]')?.value||'',
+    due_date:form.querySelector('[name=due_date]')?.value||'',
+    payment_method:form.querySelector('[name=payment_method]')?.value||'Cash',
+    customer_id:form.querySelector('[name=customer_id]')?.value||'',
+    discount:Number(form.querySelector('[name=discount]')?.value)||0,
+    paid:Number(form.querySelector('[name=paid]')?.value)||0,
+    notes:form.querySelector('[name=notes]')?.value||'',
+    items:readInvoiceItems()
+  };
+}
+function restoreInvoiceDraft(draft,newItem){
+  if(!draft)return;
+  const form=document.getElementById('invoiceForm'); if(!form)return;
+  const set=(name,value)=>{const el=form.querySelector(`[name="${name}"]`);if(el)el.value=value??''};
+  set('invoice_no',draft.invoice_no);set('invoice_date',draft.invoice_date);set('due_date',draft.due_date);
+  set('payment_method',draft.payment_method||'Cash');set('customer_id',draft.customer_id||'');
+  set('discount',draft.discount||0);set('paid',draft.paid||0);set('notes',draft.notes||'');
+  const box=document.getElementById('invoiceItemRows');
+  if(box){box.innerHTML='';[...(draft.items||[]),newItem].forEach(it=>addInvoiceItem(it));}
+  updateInvoiceTotals();
+  updateInvoicePreviousBalance(draft.customer_id||'');
+}
+function openNewInvoiceItemModal(prefill=''){
+  if(!isAdmin)return alert('Administrator access required to add a saved item.');
+  pendingInvoiceItemDraft=captureInvoiceDraft();
+  openModal('New Item',`<div class="rs-new-item-popup">
+    <div class="popup-kicker">SAVE ITEM + ADD TO INVOICE</div>
+    <form onsubmit="saveNewInvoiceItemAndAdd(event)">
+      <div class="popup-grid">
+        <div class="full"><label>Item name</label><input name="name" required value="${esc(prefill)}" placeholder="e.g. Photo Paper Print"></div>
+        <div><label>Selling Price / Unit Price</label><input name="price" type="number" min="0" step="0.01" required placeholder="Customer price"></div>
+        <div><label>Stock Quantity</label><input name="qty" type="number" min="0" step="1" value="0" placeholder="0"></div>
+        <div><label>Buy Price <span class="hint">(optional)</span></label><input name="cost" type="number" min="0" step="0.01" value="0" placeholder="Supplier cost"></div>
+        <div class="full"><div class="hint">This item will be saved to the Studio Redshine catalogue and added to this invoice automatically.</div></div>
+        <div class="full"><button class="primary" type="submit">Save Item & Add</button></div>
+      </div>
+    </form>
+  </div>`);
+  setTimeout(()=>document.querySelector('.rs-new-item-popup input[name=name]')?.focus(),40);
+}
+async function saveNewInvoiceItemAndAdd(e){
+  e.preventDefault();
+  const f=new FormData(e.target);
+  const name=String(f.get('name')||'').trim();
+  const price=Math.max(0,Number(f.get('price'))||0);
+  const qty=Math.max(0,Math.round(Number(f.get('qty'))||0));
+  const cost=Math.max(0,Number(f.get('cost'))||0);
+  if(!name)return alert('Enter item name.');
+  if(!price)return alert('Enter selling price.');
   const st=catalogState();
-  const existing=st.items.find(x=>String(x.name||'').trim().toLowerCase()===name.toLowerCase());
-  // When an item is created directly from an invoice, initialize its stock
-  // with the invoice quantity. The invoice save will deduct that same quantity,
-  // leaving stock at zero instead of blocking the invoice as "not enough stock".
-  const initialQty=existing ? Math.max(0,Math.round(Number(existing.qty)||0)) : qty;
-  st.items=[...st.items.filter(x=>String(x.name||'').trim().toLowerCase()!==name.toLowerCase()),{name,cost:Number(existing?.cost)||0,price,qty:initialQty,supplier:String(existing?.supplier||'')}];
+  const key=name.toLowerCase();
+  st.items=st.items.filter(x=>String(x.name||'').trim().toLowerCase()!==key);
+  st.items.push({name,cost,price,qty,supplier:''});
   const ok=await saveCatalog(st);
-  if(ok){
-    btn.textContent='Saved ✓';
-    setTimeout(()=>btn.textContent='Save Item',900);
-    // Refresh the row's stock info immediately.
-    const stock=st.items.find(x=>String(x.name||'').trim().toLowerCase()===name.toLowerCase());
-    const info=row.querySelector('.stock-info');
-    if(info)info.innerHTML=stock?`Stock: ${Number(stock.qty)||0}${stock.supplier?' • '+esc(stock.supplier):''}${Number(stock.cost||0)>0?` • Buy: ${money(stock.cost)} • Profit: ${money((Number(stock.price)||0)-(Number(stock.cost)||0))}/unit`:''}`:'Not a saved stock item';
-    row.dataset.cost=Number(stock?.cost)||0;
+  if(!ok)return;
+  const draft=pendingInvoiceItemDraft;
+  pendingInvoiceItemDraft=null;
+  closeModal();
+  const newItem={name,qty:1,price,cost};
+  if(draft){
+    const base=draft.original?{...draft.original,items:draft.items}:null;
+    openInvoice(base);
+    restoreInvoiceDraft(draft,newItem);
+  }else{
+    addInvoiceItem(newItem);
   }
 }
 function openItemModal(item=null){
@@ -1131,7 +1237,7 @@ function openInvoice(inv=null){
         </div>
         <div class="rs-invoice-main">
           <div id="invoiceItems" class="card rs-invoice-items">
-            <div class="space"><div><b>Items</b><div class="rs-invoice-tip">Type a few letters to pick a saved item quickly.</div></div><button type="button" class="secondary" onclick="addInvoiceItem()">+ Add Item</button></div>
+            <div class="space"><div><b>Items</b><div class="rs-invoice-tip">Type a few letters to pick a saved item quickly.</div></div><div class="row" style="gap:6px"><button type="button" class="secondary" onclick="addInvoiceItem()">+ Add Item</button><button type="button" class="primary" onclick="openNewInvoiceItemModal()">＋ New Item</button></div></div>
             <div id="invoiceItemRows" class="rs-invoice-itemrows">${items.map(invoiceItemRow).join('')}</div>
           </div>
           <div id="invoiceEntrySection" class="rs-invoice-entry">
@@ -1160,7 +1266,7 @@ function openInvoice(inv=null){
   updateInvoiceTotals();
   updateInvoicePreviousBalance(inv?.customer_id||'');
 }
-function addInvoiceItem(){const box=document.getElementById('invoiceItemRows');if(!box)return;box.insertAdjacentHTML('beforeend',invoiceItemRow({name:'',qty:1,price:0}));updateInvoiceTotals()}
+function addInvoiceItem(it={name:'',qty:1,price:0,cost:0}){const box=document.getElementById('invoiceItemRows');if(!box)return;box.insertAdjacentHTML('beforeend',invoiceItemRow(it));updateInvoiceTotals()}
 function removeInvoiceItem(btn){const rows=document.querySelectorAll('#invoiceItemRows .invoice-item-row');if(rows.length<=1){alert('At least one invoice item is required.');return}btn.closest('.invoice-item-row').remove();updateInvoiceTotals()}
 function readInvoiceItems(){return [...document.querySelectorAll('#invoiceItemRows .invoice-item-row')].map(row=>({name:row.querySelector('.item-name').value.trim(),cost:Math.max(0,Number(row.dataset.cost)||0),qty:Math.max(1,Math.round(Number(row.querySelector('.item-qty').value)||1)),price:Math.max(0,Number(row.querySelector('.item-price').value)||0)})).filter(x=>x.name||x.price>0)}
 function updateInvoiceTotals(){
