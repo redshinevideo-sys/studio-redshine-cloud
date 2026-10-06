@@ -1052,7 +1052,7 @@ body:has(.rs-new-item-popup) .rs-new-item-popup .hint{
 <section id="invoices" class="page"><div class="space"><h2>Invoices & Bills</h2><button class="primary" onclick="openInvoice()">+ Invoice</button></div><div class="card"><div id="invoiceTable"></div></div></section>
 <section id="expenses" class="page"><div class="space"><h2>Expenses / Costs</h2><button class="primary" onclick="openExpense()">+ Expense</button></div><div class="card"><div id="expenseTable"></div></div></section>
 <section id="reports" class="page"><div class="space"><h2>Income / Expense Reports</h2><div class="row"><select id="reportPeriod" onchange="renderReports()" style="max-width:150px"><option value="daily">Daily</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select><input id="reportMonth" type="month" onchange="renderReports()" style="max-width:180px"></div></div><div class="grid" id="reportKpis" style="margin-top:12px"></div><div class="card chart-wrap"><div id="reportChart"></div></div><div class="card" style="margin-top:14px"><div id="reportBody"></div></div></section>
-<section id="profit" class="page"><div class="space"><h2>Profit / Shares</h2><div class="row"><input id="profitMonth" type="month" onchange="renderProfitShares()" style="max-width:180px"><button class="secondary" onclick="openProfitSettings()">⚙️ Partner Names</button></div></div><div class="card" style="margin-top:12px"><div class="hint">Net profit = Total Income − Total Expenses. Expenses include job direct costs, materials/items, salary and business overheads. The net profit is split into 3 equal parts.</div><div class="grid" id="profitKpis" style="margin-top:12px"></div></div><div class="card" style="margin-top:14px"><div class="space"><h3>3-Part Distribution</h3><span class="status">⅓ + ⅓ + ⅓</span></div><div id="profitShares"></div></div><div class="card" style="margin-top:14px"><div class="space"><h3>Withdrawals / Transfers</h3><span class="hint">Record money taken from a partner share or transferred to the business account.</span></div><div id="profitHistory"></div></div></section><section id="employees" class="page"><div class="space"><div><h2>Employees / Salary</h2><div class="employee-kicker">Manage staff, advances and monthly salary in one simple workspace.</div></div><div class="row"><input class="search" id="employeeSearch" oninput="renderEmployees()" placeholder="Search employee..."><button class="primary" onclick="openEmployee()">+ Employee</button></div></div><div class="employee-tip"><span>💡</span><span><b>Easy flow:</b> Add employee → Give Advance → Add monthly Salary → Deduct advance when paying.</span></div><div class="grid" id="employeeKpis" style="margin-top:12px"></div><div class="card" style="margin-top:14px"><div id="employeeTable"></div></div><div class="card" style="margin-top:14px"><div class="space"><h3>Salary History</h3><span class="hint">Salary expense is included when calculating Net Profit.</span></div><div id="salaryTable"></div></div></section><section id="reminders" class="page"><div class="space"><h2>WhatsApp Reminders</h2><span class="status">Outstanding invoices</span></div><div class="card"><div id="reminderTable"></div></div></section>
+<section id="profit" class="page"><div class="space"><h2>Profit / Shares</h2><div class="row"><input id="profitMonth" type="month" onchange="renderProfitShares()" style="max-width:180px"><button class="secondary" onclick="openProfitSettings()">⚙️ Partner Names</button></div></div><div class="card" style="margin-top:12px"><div class="hint">Net profit = Sales (Invoices + Jobs) − Total Business Costs. The result can be positive (profit) or negative (loss). Only positive profit is split into 3 equal parts.</div><div class="grid" id="profitKpis" style="margin-top:12px"></div></div><div class="card" style="margin-top:14px"><div class="space"><h3>3-Part Distribution</h3><span class="status">⅓ + ⅓ + ⅓</span></div><div id="profitShares"></div></div><div class="card" style="margin-top:14px"><div class="space"><h3>Withdrawals / Transfers</h3><span class="hint">Record money taken from a partner share or transferred to the business account. Negative amounts can be used for urgent advances that reduce the future share.</span></div><div id="profitHistory"></div></div></section><section id="employees" class="page"><div class="space"><div><h2>Employees / Salary</h2><div class="employee-kicker">Manage staff, advances and monthly salary in one simple workspace.</div></div><div class="row"><input class="search" id="employeeSearch" oninput="renderEmployees()" placeholder="Search employee..."><button class="primary" onclick="openEmployee()">+ Employee</button></div></div><div class="employee-tip"><span>💡</span><span><b>Easy flow:</b> Add employee → Give Advance → Add monthly Salary → Deduct advance when paying.</span></div><div class="grid" id="employeeKpis" style="margin-top:12px"></div><div class="card" style="margin-top:14px"><div id="employeeTable"></div></div><div class="card" style="margin-top:14px"><div class="space"><h3>Salary History</h3><span class="hint">Salary expense is included when calculating Net Profit.</span></div><div id="salaryTable"></div></div></section><section id="reminders" class="page"><div class="space"><h2>WhatsApp Reminders</h2><span class="status">Outstanding invoices</span></div><div class="card"><div id="reminderTable"></div></div></section>
 <section id="items" class="page"><div class="space"><h2>Items</h2><div class="row"><input class="catalog-search" id="itemSearch" oninput="renderItems()" placeholder="Search items..."><button class="primary" onclick="openItemModal()">+ Item</button></div></div><div class="card" style="margin-top:14px"><div class="hint" style="margin-bottom:10px">Save your common items here. When creating an invoice, type the item name and matching items will appear automatically.</div><div id="itemTable"></div></div></section>
 <section id="suppliers" class="page"><div class="space"><h2>Suppliers</h2><div class="row"><input class="search" id="supplierSearch" oninput="renderSuppliers()" placeholder="Search supplier..."><button class="primary" onclick="openSupplier()">+ Supplier</button></div></div><div class="card supplier-card"><div class="hint" style="margin-bottom:10px">Add suppliers here. When recording a Purchase expense, choose a supplier and purchased items.</div><div id="supplierTable"></div></div></section>
 <section id="settings" class="page"><h2>Settings</h2><div class="card"><form onsubmit="saveSettings(event)"><div><label>Business name</label><input name="name" id="bizName"></div><div><label>Phone</label><input name="phone" id="bizPhone"></div><div><label>Address</label><input name="address" id="bizAddress"></div><div><label>Currency</label><input name="currency" id="currency"></div><div class="full"><label>Business Logo</label><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewLogo(event)"><div id="logoPreview" class="hint" style="margin-top:8px"></div></div><div class="full"><button class="primary">Save Settings</button></div></form><hr><p class="hint">Business settings are shared across the system. Only an Administrator can change them.</p><button class="secondary" onclick="exportBackup()">Export Backup JSON</button><span id="syncStatus" class="status" style="margin-left:10px"></span></div></section>
@@ -2011,15 +2011,30 @@ function renderReportChart(period, labels, values){
 }
 function profitSettings(){const st=catalogState();const p=st.profit_settings||{};return {owner1:String(p.owner1||'Owner 1'),owner2:String(p.owner2||'Owner 2')};}
 function profitWithdrawals(){return catalogState().profit_withdrawals||[];}
-function profitNetForMonth(month){return reportMetricsForPeriod('monthly',month).net;}
+function profitNetForMonth(month){
+  // SINGLE SOURCE OF TRUTH: use the exact Net Profit value already used by Dashboard.
+  // Do not recalculate profit here. The Profit / Shares tab must always match Dashboard.
+  return round2(ytdMetricsForYear(Number(thisYearISO())).net);
+}
+
 function profitDistributionForMonth(month){
-  const net=Math.max(0,profitNetForMonth(month));
-  const third=Math.floor((net/3)*100)/100;
-  const parts=[third,third,Math.max(0,net-third-third)];
+  // Keep losses visible instead of turning them into zero profit. Only a positive
+  // profit is distributable; withdrawals/urgent advances reduce the available share.
+  const net=round2(profitNetForMonth(month));
+  const distributable=Math.max(0,net);
+  const third=Math.floor((distributable/3)*100)/100;
+  const parts=[third,third,Math.max(0,round2(distributable-third-third))];
   const rows=profitWithdrawals().filter(x=>x.period===month);
   const taken={owner1:0,owner2:0,business:0};
-  rows.forEach(x=>{if(Object.prototype.hasOwnProperty.call(taken,x.bucket))taken[x.bucket]+=Math.max(0,Number(x.amount)||0);});
-  return {net,shares:{owner1:parts[0],owner2:parts[1],business:parts[2]},taken,remaining:{owner1:Math.max(0,parts[0]-taken.owner1),owner2:Math.max(0,parts[1]-taken.owner2),business:Math.max(0,parts[2]-taken.business)}};
+  rows.forEach(x=>{
+    if(Object.prototype.hasOwnProperty.call(taken,x.bucket)){
+      // A negative entry is an urgent cash advance. It is still money taken from
+      // the future share, so reduce the available share by its absolute value.
+      taken[x.bucket]+=Math.abs(Number(x.amount)||0);
+    }
+  });
+  return {net,shares:{owner1:parts[0],owner2:parts[1],business:parts[2]},taken,
+    remaining:{owner1:round2(parts[0]-taken.owner1),owner2:round2(parts[1]-taken.owner2),business:round2(parts[2]-taken.business)}};
 }
 async function saveProfitState(st){return await saveCatalog(st);}
 function openProfitSettings(){
@@ -2038,13 +2053,13 @@ function openProfitWithdrawal(bucket,period){
   const label=bucket==='owner1'?p.owner1:bucket==='owner2'?p.owner2:'Business Account';
   const available=d.remaining[bucket];
   if(available<=0)return alert('No remaining amount available for this share.');
-  openModal(`Record Money — ${esc(label)}`,`<form onsubmit="saveProfitWithdrawal(event,'${bucket}','${period}')"><div class="card" style="margin-bottom:10px"><div class="muted">Available remaining</div><div class="kpi">${money(available)}</div></div><div><label>Amount taken / transferred</label><input name="amount" type="number" min="0.01" max="${available.toFixed(2)}" step="0.01" required></div><div><label>Date</label><input name="date" type="date" value="${todayISO()}" required></div><div class="full"><label>Note</label><textarea name="note" placeholder="Cash taken / bank transfer / personal withdrawal"></textarea></div><div class="full"><button class="primary">Save Transaction</button></div></form>`);
+  openModal(`Record Money — ${esc(label)}`,`<form onsubmit="saveProfitWithdrawal(event,'${bucket}','${period}')"><div class="card" style="margin-bottom:10px"><div class="muted">Available remaining</div><div class="kpi">${money(available)}</div><div class="hint" style="margin-top:6px">Need urgent money? Enter a negative amount (example: -2000). It will reduce the amount you receive later.</div></div><div><label>Amount taken / advance</label><input name="amount" type="number" min="-${available.toFixed(2)}" max="${available.toFixed(2)}" step="0.01" placeholder="e.g. 2000 or -2000" required></div><div><label>Date</label><input name="date" type="date" value="${todayISO()}" required></div><div class="full"><label>Note</label><textarea name="note" placeholder="Cash taken / urgent advance / bank transfer"></textarea></div><div class="full"><button class="primary">Save Transaction</button></div></form>`);
 }
 async function saveProfitWithdrawal(e,bucket,period){
   e.preventDefault();if(!isAdmin)return alert('Administrator access required.');
-  const f=new FormData(e.target),amount=Math.max(0,Number(f.get('amount'))||0),d=profitDistributionForMonth(period);
-  if(!amount)return alert('Enter an amount.');
-  if(amount>d.remaining[bucket]+0.005)return alert('Amount is greater than the remaining share.');
+  const f=new FormData(e.target),amount=Number(f.get('amount'))||0,d=profitDistributionForMonth(period);
+  if(!amount)return alert('Enter an amount other than 0.');
+  if(Math.abs(amount)>d.remaining[bucket]+0.005)return alert('Amount is greater than the remaining share.');
   const st=catalogState();st.profit_withdrawals=[...profitWithdrawals(),{id:crypto.randomUUID(),period,bucket,amount,date:f.get('date')||todayISO(),note:String(f.get('note')||'').trim(),created_at:new Date().toISOString(),by:currentUser?.email||''}];
   if(await saveProfitState(st)){closeModal();renderProfitShares();toast('Profit transaction saved ✓');}
 }
@@ -2065,7 +2080,7 @@ function renderProfitShares(){
   const hist=profitWithdrawals().filter(x=>x.period===month).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.created_at||'').localeCompare(String(a.created_at||'')));
   const labelFor=x=>x.bucket==='owner1'?p.owner1:x.bucket==='owner2'?p.owner2:'Business Account';
   const hb=document.getElementById('profitHistory');
-  if(hb)hb.innerHTML=hist.length?`<table><tr><th>Date</th><th>Part</th><th>Amount</th><th>Note</th><th></th></tr>${hist.map(x=>`<tr><td>${esc(x.date||'')}</td><td>${esc(labelFor(x))}</td><td class="paid-strong">${money(x.amount)}</td><td>${esc(x.note||'')}</td><td>${isAdmin?`<button class="danger" onclick="deleteProfitWithdrawal('${x.id}')">Delete</button>`:''}</td></tr>`).join('')}</table>`:'<div class="empty">No withdrawals or transfers recorded for this month.</div>';
+  if(hb)hb.innerHTML=hist.length?`<table><tr><th>Date</th><th>Part</th><th>Amount</th><th>Note</th><th></th></tr>${hist.map(x=>`<tr><td>${esc(x.date||'')}</td><td>${esc(labelFor(x))}</td><td class="${Number(x.amount)<0?'due-strong':'paid-strong'}">${Number(x.amount)<0?'−':''}${money(Math.abs(Number(x.amount)||0))}</td><td>${esc(x.note||'')}</td><td>${isAdmin?`<button class="danger" onclick="deleteProfitWithdrawal('${x.id}')">Delete</button>`:''}</td></tr>`).join('')}</table>`:'<div class="empty">No withdrawals or transfers recorded for this month.</div>';
 }
 function employees(){return catalogState().employees||[]}
 function employeeAdvances(){return catalogState().employee_advances||[]}
