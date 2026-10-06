@@ -2026,9 +2026,9 @@ function renderReportChart(period, labels, values){
 function profitSettings(){const st=catalogState();const p=st.profit_settings||{};return {owner1:String(p.owner1||'Owner 1'),owner2:String(p.owner2||'Owner 2')};}
 function profitWithdrawals(){return catalogState().profit_withdrawals||[];}
 function profitNetForMonth(month){
-  // SINGLE SOURCE OF TRUTH: use the exact Net Profit value already used by Dashboard.
-  // Do not recalculate profit here. The Profit / Shares tab must always match Dashboard.
-  return round2(ytdMetricsForYear(Number(thisYearISO())).net);
+  // Profit / Shares is intentionally month-specific. Use the same monthly
+  // report calculation and selected month, rather than Dashboard's year-to-date total.
+  return round2(reportMetricsForPeriod('monthly', month).net);
 }
 
 function profitDistributionForMonth(month){
