@@ -1080,7 +1080,7 @@ body:has(.rs-new-item-popup) .rs-new-item-popup .hint{
 <section id="items" class="page"><div class="space"><h2>Items</h2><div class="row"><input class="catalog-search" id="itemSearch" oninput="renderItems()" placeholder="Search items..."><button class="primary" onclick="openItemModal()">+ Item</button></div></div><div class="card" style="margin-top:14px"><div class="hint" style="margin-bottom:10px">Save your common items here. When creating an invoice, type the item name and matching items will appear automatically.</div><div id="itemTable"></div></div></section>
 <section id="suppliers" class="page"><div class="space"><h2>Suppliers</h2><div class="row"><input class="search" id="supplierSearch" oninput="renderSuppliers()" placeholder="Search supplier..."><button class="primary" onclick="openSupplier()">+ Supplier</button></div></div><div class="card supplier-card"><div class="hint" style="margin-bottom:10px">Add suppliers here. When recording a Purchase expense, choose a supplier and purchased items.</div><div id="supplierTable"></div></div></section>
 <section id="settings" class="page"><h2>Settings</h2><div class="card"><form onsubmit="saveSettings(event)"><div><label>Business name</label><input name="name" id="bizName"></div><div><label>Phone</label><input name="phone" id="bizPhone"></div><div><label>Address</label><input name="address" id="bizAddress"></div><div><label>Currency</label><input name="currency" id="currency"></div><div class="full"><label>Business Logo</label><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewLogo(event)"><div id="logoPreview" class="hint" style="margin-top:8px"></div></div><div class="full"><button class="primary">Save Settings</button></div></form><hr><p class="hint">Business settings are shared across the system. Only an Administrator can change them.</p><button class="secondary" onclick="exportBackup()">Export Backup JSON</button><span id="syncStatus" class="status" style="margin-left:10px"></span></div></section>
-<section id="admin" class="page"><div class="space"><h2>Administrator</h2><span class="badge paid">ADMIN</span></div><div class="grid" id="adminKpis" style="margin-top:12px"></div><div class="card" style="margin-top:14px"><div class="space"><h3>User Accounts</h3><span class="hint">New accounts start as Staff. Only an Administrator can change roles.</span></div><div id="adminUsers"></div></div><div class="card" style="margin-top:14px"><h3>Remove Test / Old Data</h3><p class="hint">Use the Delete buttons in the tables to remove individual records. The button below removes all customers, jobs, invoices and expenses from the cloud database. This cannot be undone.</p><button class="danger" onclick="clearAllBusinessData()">Delete ALL Business Data</button></div></section>
+<section id="admin" class="page"><div class="space"><h2>Administrator</h2><span class="badge paid">ADMIN</span></div><div class="grid" id="adminKpis" style="margin-top:12px"></div><div class="card" style="margin-top:14px"><div class="space"><h3>User Accounts</h3><span class="hint">New accounts start as Staff. Only an Administrator can change roles.</span></div><div id="adminUsers"></div></div><div class="card" style="margin-top:14px"><h3>Remove Test / Old Data</h3><p class="hint">Reset All Data removes all customers, jobs, invoices, expenses, stock items, suppliers, employee records, salary/advance history, purchase records, transaction history and profit withdrawals from the cloud. Business profile settings and login accounts are kept. A JSON backup download is started before deletion. This cannot be undone.</p><button class="danger" onclick="resetAllData()">Reset ALL Data</button></div></section>
 </main></div>
 <div class="modal" id="modal"><div class="modalbox"><div class="space"><h3 id="modalTitle"></h3><button class="secondary" onclick="closeModal()">✕</button></div><div id="modalBody"></div></div></div>
 <div id="toast"></div><div id="printArea"></div>
@@ -1093,11 +1093,23 @@ const SUPABASE_ANON_KEY = "sb_publishable_9UsU9eBy3g37sC6vWhK6Rg_4Gk0x332";
 let sb=null, currentUser=null, currentProfile=null, isAdmin=false;
 let data={customers:[],jobs:[],invoices:[],expenses:[],settings:null};
 function localCatalog(){try{return JSON.parse(localStorage.getItem('redshine_item_catalog')||'[]')}catch(e){return []}}
+// Supplier recovery: older/partial catalog formats may omit the suppliers array even though
+// supplier names remain on stock items or inside saved Purchase expense metadata.
+function recoverSupplierList(saved,items,expenses){
+  const list=Array.isArray(saved)?saved.filter(x=>x&&String(x.name||'').trim()).map(x=>({...x,name:String(x.name).trim()})):[];
+  const seen=new Set(list.map(x=>x.name.toLowerCase()));
+  const add=(raw)=>{const name=String(raw||'').trim();if(!name||seen.has(name.toLowerCase()))return;seen.add(name.toLowerCase());let hash=0;for(let i=0;i<name.toLowerCase().length;i++)hash=((hash*31)+name.toLowerCase().charCodeAt(i))|0;list.push({id:'recovered-'+Math.abs(hash).toString(36),name,phone:'',notes:'Recovered from existing item/purchase records'});};
+  (Array.isArray(items)?items:[]).forEach(x=>add(x?.supplier));
+  (Array.isArray(expenses)?expenses:[]).forEach(x=>{try{const p=purchaseInfo(x);if(p)add(p.supplier)}catch(e){}});
+  return list;
+}
 function catalogState(){
-  let v=data.settings?.item_catalog;
-  if(Array.isArray(v)) return {items:v,suppliers:[],purchases:[],customer_transactions:[],supplier_transactions:[],profit_settings:{owner1:'Owner 1',owner2:'Owner 2'},profit_withdrawals:[],employees:[],employee_advances:[],salary_records:[],job_payments:[]};
-  if(v&&typeof v==='object') return {items:Array.isArray(v.items)?v.items:[],suppliers:Array.isArray(v.suppliers)?v.suppliers:[],purchases:Array.isArray(v.purchases)?v.purchases:[],customer_transactions:Array.isArray(v.customer_transactions)?v.customer_transactions:[],supplier_transactions:Array.isArray(v.supplier_transactions)?v.supplier_transactions:[],profit_settings:v.profit_settings&&typeof v.profit_settings==='object'?v.profit_settings:{owner1:'Owner 1',owner2:'Owner 2'},profit_withdrawals:Array.isArray(v.profit_withdrawals)?v.profit_withdrawals:[],employees:Array.isArray(v.employees)?v.employees:[],employee_advances:Array.isArray(v.employee_advances)?v.employee_advances:[],salary_records:Array.isArray(v.salary_records)?v.salary_records:[],job_payments:Array.isArray(v.job_payments)?v.job_payments:[]};
-  let old=localCatalog(); return {items:Array.isArray(old)?old:[],suppliers:[],purchases:[],customer_transactions:[],supplier_transactions:[],profit_settings:{owner1:'Owner 1',owner2:'Owner 2'},profit_withdrawals:[],employees:[],employee_advances:[],salary_records:[],job_payments:[]};
+  let v=data.settings?.item_catalog, items=[], savedSuppliers=[];
+  if(Array.isArray(v)){items=v;savedSuppliers=[];}
+  else if(v&&typeof v==='object'){items=Array.isArray(v.items)?v.items:[];savedSuppliers=Array.isArray(v.suppliers)?v.suppliers:[];}
+  else {let old=localCatalog();items=Array.isArray(old)?old:[];savedSuppliers=[];}
+  const state=(v&&typeof v==='object'&&!Array.isArray(v))?v:{};
+  return {items,suppliers:recoverSupplierList(savedSuppliers,items,data.expenses),purchases:Array.isArray(state.purchases)?state.purchases:[],customer_transactions:Array.isArray(state.customer_transactions)?state.customer_transactions:[],supplier_transactions:Array.isArray(state.supplier_transactions)?state.supplier_transactions:[],profit_settings:state.profit_settings&&typeof state.profit_settings==='object'?state.profit_settings:{owner1:'Owner 1',owner2:'Owner 2'},profit_withdrawals:Array.isArray(state.profit_withdrawals)?state.profit_withdrawals:[],employees:Array.isArray(state.employees)?state.employees:[],employee_advances:Array.isArray(state.employee_advances)?state.employee_advances:[],salary_records:Array.isArray(state.salary_records)?state.salary_records:[],job_payments:Array.isArray(state.job_payments)?state.job_payments:[]};
 }
 function customerTransactions(){return catalogState().customer_transactions||[]}
 function invoicePayments(inv){
@@ -1519,9 +1531,14 @@ function invoiceItemNameInput(input){
   positionInvoiceSuggestionBox(input,box);
 }
 function pickInvoiceItem(btn,name,price,cost){const row=btn.closest('.invoice-item-row');row.querySelector('.item-name').value=name;row.querySelector('.item-price').value=Number(price)||0;row.dataset.cost=Number(cost)||0;row.querySelector('.suggestions').innerHTML='';const stock=catalog().find(x=>String(x.name||'').trim().toLowerCase()===String(name).trim().toLowerCase());row.dataset.cost=Number(stock?.cost)||0;const info=row.querySelector('.stock-info');if(info)info.innerHTML=stock?`Stock: ${Number(stock.qty)||0}${stock.supplier?' • '+esc(stock.supplier):''}${Number(stock.cost||0)>0?` • Buy: ${money(stock.cost)} • Profit: ${money((Number(stock.price)||0)-(Number(stock.cost)||0))}/unit`:''}`:'Not a saved stock item';updateInvoiceTotals()}
-async function saveCatalog(nextState){
+async function saveCatalog(nextState,options={}){
   if(!isAdmin){alert('Administrator access required to change the shared item list.');return false}
   const st=(nextState&&nextState.items)?nextState:catalogState();
+  // Safety guard: do not let an older/stale browser tab overwrite a non-empty cloud supplier list with [].
+  // Explicit supplier deletion passes allowEmptySuppliers:true.
+  if(!options.allowEmptySuppliers && (!Array.isArray(st.suppliers)||st.suppliers.length===0)){
+    try{const remote=await sb.from('business_settings').select('item_catalog').eq('id',1).maybeSingle();const remoteCatalog=remote?.data?.item_catalog;if(Array.isArray(remoteCatalog?.suppliers)&&remoteCatalog.suppliers.length)st.suppliers=remoteCatalog.suppliers;}catch(e){console.warn('Supplier preservation check failed',e)}
+  }
   st.items=st.items.filter(x=>x.name).map(x=>({name:String(x.name).trim(),cost:Math.max(0,Number(x.cost)||0),price:Math.max(0,Number(x.price)||0),qty:Math.max(0,Math.round(Number(x.qty)||0)),supplier:String(x.supplier||'').trim()}));
   const seen=new Map();st.items.forEach(x=>seen.set(x.name.toLowerCase(),x));st.items=[...seen.values()];
   st.customer_transactions=Array.isArray(st.customer_transactions)?st.customer_transactions:[];
@@ -1840,7 +1857,7 @@ function openExpense(x=null){const pi=purchaseInfo(x), rows=pi?.items||[{name:''
 <option ${x?.category==='Equipment'?'selected':''}>Equipment</option>
 <option ${x?.category==='Printing'?'selected':''}>Printing</option>
 <option ${x?.category==='Other'?'selected':''}>Other</option>
-</select></div><div id="purchaseFields" class="full"><div><label>Supplier</label><select id="purchaseSupplier"><option value="">Select supplier</option>${suppliers().map(z=>`<option value="${esc(z.name)}" ${z.name===sup?'selected':''}>${esc(z.name)}</option>`).join('')}</select></div><div style="margin-top:12px"><div class="space"><label>Purchased Items</label><button type="button" class="secondary" onclick="addPurchaseRow()">+ Add Item</button></div><div id="purchaseRows">${purchaseRowsHtml(rows)}</div></div></div><div class="full"><label>Description</label><input id="expenseDescription" name="description" value="${esc(pi?.label||(!pi?x?.description:''))}"></div><div><label>Amount</label><input id="expenseAmount" type="number" step="0.01" min="0" name="amount" value="${x?.amount||0}" required></div><div class="full"><button class="primary">Save Expense</button></div></form>`);togglePurchaseFields();}
+</select></div><div id="purchaseFields"<div id="purchaseFields" class="full"><div><label>Supplier</label><select id="purchaseSupplier"><option value="">Select supplier</option>${suppliers().map(z=>`<option value="${esc(z.name)}" ${z.name===sup?'selected':''}>${esc(z.name)}</option>`).join('')}</select></div><div style="margin-top:12px"><div class="space"><label>Purchased Items</label><button type="button" class="secondary" onclick="addPurchaseRow()">+ Add Item</button></div><div id="purchaseRows">${purchaseRowsHtml(rows)}</div></div></div><div class="full"><label>Description</label><input id="expenseDescription" name="description" value="${esc(pi?.label||(!pi?x?.description:''))}"></div><div><label>Amount</label><input id="expenseAmount" type="number" step="0.01" min="0" name="amount" value="${x?.amount||0}" required></div><div class="full"><button class="primary">Save Expense</button></div></form>`);togglePurchaseFields();}
 function togglePurchaseFields(){const p=document.getElementById('purchaseFields'),cat=document.getElementById('expenseCategory')?.value;if(p)p.style.display=cat==='Purchase'?'block':'none'}
 function addPurchaseRow(){const box=document.getElementById('purchaseRows');if(box)box.insertAdjacentHTML('beforeend',purchaseRowsHtml([{name:'',qty:1,cost:0}]))}
 function purchaseItemChanged(sel){const it=catalog().find(x=>x.name===sel.value);const row=sel.closest('.purchase-row');if(it&&row)row.querySelector('.purchase-cost').value=Number(it.cost)||0}
@@ -1848,21 +1865,7 @@ async function saveExpense(e,id){e.preventDefault();const f=new FormData(e.targe
 function render(){renderDashboard();renderCustomers();renderJobs();renderInvoices();renderExpenses();renderReports();renderProfitShares();renderEmployees();renderReminders();renderItems();renderSuppliers()}
 function invoiceGrossProfit(inv){const items=Array.isArray(inv?.items)?inv.items:[];const cogs=items.reduce((s,it)=>s+(Number(it.qty)||0)*(Number(it.cost)||0),0);return Number(inv?.total||0)-cogs}
 function expenseBreakdownForPeriod(period=null,key=null){
-  // Use the same date cut-off as income: future-dated expenses, job costs and
-  // salary entries must not affect today's monthly/YTD profit before their date.
-  const match=(v)=>{
-    if(!period||period==='all') return true;
-    const raw=String(v||'').trim();
-    if(!raw) return false;
-    const today=todayISO(), currentMonth=thisMonthISO(), currentYear=thisYearISO();
-    // Accept full dates, month-only salary keys (YYYY-MM), and year-only keys.
-    if(/^\d{4}-\d{2}-\d{2}$/.test(raw) && raw>today) return false;
-    if(/^\d{4}-\d{2}$/.test(raw) && raw>currentMonth) return false;
-    if(/^\d{4}$/.test(raw) && raw>currentYear) return false;
-    if(period==='daily') return raw.slice(0,10)===key;
-    if(period==='monthly') return raw.slice(0,7)===key;
-    return raw.slice(0,4)===key;
-  };
+  const match=(v)=>!period||period==='all'?true:(period==='daily'?String(v||'').slice(0,10)===key:period==='monthly'?String(v||'').slice(0,7)===key:String(v||'').slice(0,4)===key);
   const ex=data.expenses.filter(x=>match(x.date));
   const jobDirect=data.jobs.filter(x=>match(x.date||x.created_at)).reduce((s,x)=>s+Math.max(0,Number(x.cost)||0),0);
   const materials=ex.filter(x=>String(x.category||'')==='Purchase').reduce((s,x)=>s+Math.max(0,Number(x.amount)||0),0);
@@ -2046,7 +2049,24 @@ function renderJobs(){
   const section=(id,title,subtitle,items,cls='')=>items.length?`<section class="sr-job-group ${cls}"><div class="sr-job-group-title"><div><h3>${title} <span>${items.length}</span></h3><p>${subtitle}</p></div></div>${items.map(card).join('')}</section>`:'';
   jobTable.innerHTML=all.length?`${section('due','💰 Payment Due','Jobs that still have a balance to collect',due,'sr-job-due')}${section('process','🔄 In Process','Booked or currently being worked on',process,'sr-job-process')}${section('completed','✅ Completed · Payment Due','Completed jobs with money still outstanding',completed,'sr-job-completed')}${archive.length?`<details class="sr-job-archive"><summary>📦 Completed & Fully Paid <span>${archive.length} archived</span></summary><div class="sr-job-archive-list">${archive.map(card).join('')}</div></details>`:''}${section('cancelled','✖ Cancelled','Cancelled jobs',cancelled,'sr-job-cancelled')}`:'<div class="empty">No jobs yet. Tap + New Job to get started.</div>';
 }
-function renderInvoices(){const query=String(document.getElementById('invoiceSearch')?.value||'').trim().toLowerCase();const compactQuery=query.replace(/[\s-]/g,'');const queryDigits=query.replace(/\D/g,'');const rows=data.invoices.filter(i=>{const c=customer(i.customer_id);const text=`${i.invoice_no||''} ${c?.name||''} ${c?.phone||''} ${invoiceDate(i)}`.toLowerCase();const phoneDigits=String(c?.phone||'').replace(/\D/g,'');return !query||text.includes(query)||text.replace(/[\s-]/g,'').includes(compactQuery)||(queryDigits.length>=4&&(phoneDigits.includes(queryDigits)||phoneDigits.endsWith(queryDigits.replace(/^0/,'').replace(/^94/,''))))});invoiceTable.innerHTML=rows.length?`<table><tr><th>No</th><th>Date</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance/Change</th><th>Status</th><th>Payment History</th><th>Actions</th></tr>${rows.map(i=>{const paid=paymentTotal(i),bal=invoiceBalance(i),over=bal<0,due=bal>0;return `<tr class="${over?'invoice-overpaid-row':due?'invoice-due-row':''}"><td data-label="Invoice No">${i.invoice_no||i.id.slice(0,8)}</td><td data-label="Date">${invoiceDate(i)}</td><td data-label="Customer">${esc(customerName(i.customer_id))}</td><td data-label="Total">${money(i.total)}</td><td data-label="Paid" class="${paid>0?'paid-strong':''}">${money(paid)}</td><td data-label="Balance / Change" class="${over?'overpaid-strong':due?'due-strong':'paid-strong'}">${money(Math.abs(bal))}</td><td data-label="Status"><span class="badge ${over?'overpaidbadge':due?'dangerbadge':'paid'}">${over?'OVERPAID':due?'BALANCE DUE':'PAID'}</span></td><td data-label="Payment History">${paymentHistoryHtml(i)}</td><td data-label="Actions" class="mobile-actions"><button class="secondary" onclick="openInvoice(data.invoices.find(x=>x.id==='${i.id}'))">Edit / Payment</button> <button class="secondary" onclick="printInvoice('${i.id}')">PDF</button> <button class="secondary" onclick="waReminder('${i.id}')">WhatsApp</button> <button class="secondary" onclick="invoiceSMS('${i.id}')">SMS</button>${isAdmin?` <button class="danger" onclick="deleteRecord('invoices','${i.id}','invoice')">Delete</button>`:''}</td></tr>`}).join('')}</table>`:'<div class="empty">No invoices.</div>'}
+function renderInvoices(){
+  const query=String(document.getElementById('invoiceSearch')?.value||'').trim().toLowerCase();
+  const compactQuery=query.replace(/[\s-]/g,'');
+  const queryDigits=query.replace(/\D/g,'');
+  const rows=data.invoices.filter(i=>{
+    const c=customer(i.customer_id);
+    const text=`${i.invoice_no||''} ${c?.name||''} ${c?.phone||''} ${invoiceDate(i)}`.toLowerCase();
+    const phoneDigits=String(c?.phone||'').replace(/\D/g,'');
+    const phoneQuery=queryDigits.replace(/^0/,'').replace(/^94/,'');
+    const phoneMatch=queryDigits.length>=4&&(phoneDigits.includes(queryDigits)||phoneDigits.endsWith(phoneQuery));
+    return !query||text.includes(query)||text.replace(/[\s-]/g,'').includes(compactQuery)||phoneMatch;
+  }).sort((a,b)=>String(invoiceDate(b)||b.created_at||'').localeCompare(String(invoiceDate(a)||a.created_at||'')));
+  const dueRows=rows.filter(i=>invoiceBalance(i)>0.001);
+  const paidRows=rows.filter(i=>invoiceBalance(i)<=0.001);
+  const renderTable=(items)=>items.length?`<div class="card" style="margin-top:10px;overflow-x:auto"><table><tr><th>No</th><th>Date</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance/Change</th><th>Status</th><th>Payment History</th><th>Actions</th></tr>${items.map(i=>{const paid=paymentTotal(i),bal=invoiceBalance(i),over=bal<-.001,due=bal>.001;return `<tr class="${over?'invoice-overpaid-row':due?'invoice-due-row':''}"><td data-label="Invoice No">${i.invoice_no||i.id.slice(0,8)}</td><td data-label="Date">${invoiceDate(i)}</td><td data-label="Customer">${esc(customerName(i.customer_id))}</td><td data-label="Total">${money(i.total)}</td><td data-label="Paid" class="${paid>0?'paid-strong':''}">${money(paid)}</td><td data-label="Balance / Change" class="${over?'overpaid-strong':due?'due-strong':'paid-strong'}">${money(Math.abs(bal))}</td><td data-label="Status"><span class="badge ${over?'overpaidbadge':due?'dangerbadge':'paid'}">${over?'OVERPAID':due?'BALANCE DUE':'PAID'}</span></td><td data-label="Payment History">${paymentHistoryHtml(i)}</td><td data-label="Actions" class="mobile-actions"><button class="secondary" onclick="openInvoice(data.invoices.find(x=>x.id==='${i.id}'))">Edit / Payment</button> <button class="secondary" onclick="printInvoice('${i.id}')">PDF</button> <button class="secondary" onclick="waReminder('${i.id}')">WhatsApp</button> <button class="secondary" onclick="invoiceSMS('${i.id}')">SMS</button>${isAdmin?` <button class="danger" onclick="deleteRecord('invoices','${i.id}','invoice')">Delete</button>`:''}</td></tr>`}).join('')}</table></div>`:'';
+  const group=(title,subtitle,items,cls)=>items.length?`<section class="sr-job-group ${cls}" style="margin-top:14px"><div class="sr-job-group-title"><div><h3>${title} <span>${items.length}</span></h3><p>${subtitle}</p></div></div>${renderTable(items)}</section>`:'';
+  invoiceTable.innerHTML=rows.length?`${group('💰 Payment Due','Invoices with an outstanding balance to collect',dueRows,'sr-job-due')}${group('✅ Paid / Fully Settled','Invoices with no remaining balance',paidRows,'sr-job-process')}`:'<div class="empty">No invoices match your search.</div>';
+}
 function renderExpenses(){expenseTable.innerHTML=data.expenses.length?`<table><tr><th>Date</th><th>Category</th><th>Description</th><th>Supplier</th><th>Amount</th><th>Actions</th></tr>${data.expenses.map(x=>{const p=purchaseInfo(x);return `<tr><td>${x.date}</td><td>${esc(x.category)}</td><td>${esc(p?.label||x.description)}</td><td>${esc(p?.supplier||'-')}</td><td>${money(x.amount)}</td><td><button class="secondary" onclick="openExpense(data.expenses.find(v=>v.id==='${x.id}'))">Edit</button>${isAdmin?` <button class="danger" onclick="deleteExpense('${x.id}')">Delete</button>`:''}</td></tr>`}).join('')}</table>`:'<div class="empty">No expenses.</div>'}
 function supplierTransactions(){return catalogState().supplier_transactions||[]}
 function supplierPurchases(supplierId){
@@ -2116,7 +2136,7 @@ function supplierWhatsApp(id){
 }
 function openSupplier(x=null){if(!isAdmin)return alert('Administrator access required.');openModal(x?'Edit Supplier':'New Supplier',`<form id="supplierForm" onsubmit="saveSupplier(event,'${x?.id||''}')"><div><label>Supplier name</label><input name="name" required value="${esc(x?.name)}"></div><div><label>Phone</label><input name="phone" value="${esc(x?.phone)}"></div><div class="full"><label>Notes</label><input name="notes" value="${esc(x?.notes)}"></div>${contactImportControls('supplier')}<div class="full"><button class="primary">Save Supplier</button></div></form>`)}
 async function saveSupplier(e,id){e.preventDefault();const f=new FormData(e.target),st=catalogState(),o={id:id||crypto.randomUUID(),name:String(f.get('name')||'').trim(),phone:String(f.get('phone')||''),notes:String(f.get('notes')||'')};if(!o.name)return;st.suppliers=st.suppliers.filter(x=>x.id!==id&&x.name.toLowerCase()!==o.name.toLowerCase());st.suppliers.push(o);if(await saveCatalog(st)){closeModal();renderSuppliers()}}
-async function deleteSupplier(id){if(!isAdmin)return alert('Administrator access required.');if(!confirm('Delete this supplier?'))return;const st=catalogState();st.suppliers=st.suppliers.filter(x=>x.id!==id);st.supplier_transactions=(st.supplier_transactions||[]).filter(x=>String(x.supplier_id)!==String(id));if(await saveCatalog(st))renderSuppliers()}
+async function deleteSupplier(id){if(!isAdmin)return alert('Administrator access required.');if(!confirm('Delete this supplier?'))return;const st=catalogState();st.suppliers=st.suppliers.filter(x=>x.id!==id);st.supplier_transactions=(st.supplier_transactions||[]).filter(x=>String(x.supplier_id)!==String(id));if(await saveCatalog(st,{allowEmptySuppliers:true}))renderSuppliers()}
 async function deleteExpense(id){if(!isAdmin)return alert('Administrator access required.');if(!confirm('Delete this expense?'))return;const x=data.expenses.find(v=>v.id===id),pi=purchaseInfo(x),st=catalogState();if(pi)for(const r of pi.items||[])changeStock(r.name,-Math.max(0,Math.round(Number(r.qty)||0)),st);const {error}=await sb.from('expenses').delete().eq('id',id);if(error)return alert(error.message);if(pi)await saveCatalog(st);await loadAll();render();toast('Expense deleted ✓')}
 function employeeSalaryForPeriod(period,key){
   return salaryRecords().filter(x=>{
@@ -2376,15 +2396,37 @@ async function deleteRecord(table,id,label){
   if(oldInvoice){const st=catalogState();invoiceStockDelta(oldInvoice.items||[],1,st);await saveCatalog(st)}
   toast(`${label} deleted ✓`);await loadAll();render();
 }
-async function clearAllBusinessData(){
+async function resetAllData(){
   if(!isAdmin)return alert('Administrator access required.');
-  if(!confirm('Delete ALL customers, jobs, invoices and expenses from the cloud database?'))return;
-  if(!confirm('FINAL WARNING: this cannot be undone. Continue?'))return;
-  for(const table of ['invoices','jobs','expenses','customers']){
-    let {error}=await sb.from(table).delete().not('id','is',null);
-    if(error)return alert(error.message);
+  const first=confirm('RESET ALL BUSINESS DATA?\n\nThis will permanently delete customers, jobs, invoices, expenses, stock items, suppliers, employee records, salaries, advances, purchase records, transaction histories and profit withdrawals. Business profile settings and login accounts will remain.');
+  if(!first)return;
+  const typed=prompt('FINAL SAFETY CHECK\n\nA JSON backup download will start first. To continue, type RESET ALL exactly:');
+  if(typed!=='RESET ALL')return alert('Reset cancelled. No data was changed.');
+  try{
+    // Start a local JSON export before changing cloud data.
+    exportBackup();
+    const tables=['invoices','jobs','expenses','customers'];
+    for(const table of tables){
+      const {error}=await sb.from(table).delete().not('id','is',null);
+      if(error)throw new Error('Could not clear '+table+': '+error.message);
+    }
+    const current=catalogState();
+    const clean={
+      items:[],suppliers:[],purchases:[],customer_transactions:[],supplier_transactions:[],
+      profit_settings:current.profit_settings||{owner1:'Owner 1',owner2:'Owner 2'},
+      profit_withdrawals:[],employees:[],employee_advances:[],salary_records:[],job_payments:[]
+    };
+    const saved=await saveCatalog(clean);
+    if(!saved)throw new Error('Business data tables were cleared, but the shared catalog reset could not be saved. Please do not repeat the reset; contact support and inspect business_settings.');
+    localStorage.removeItem('redshine_item_catalog');
+    toast('All business data reset ✓');
+    await loadAll();render();
+    alert('Reset completed. A JSON backup download was started before deletion. Keep that file safely in case you need to refer to the previous data.');
+  }catch(err){
+    console.error(err);
+    alert('Reset stopped with an error: '+(err?.message||err)+'\n\nSome tables may already have been cleared. Do not press Reset again. Check the exported JSON backup and current cloud data first.');
+    await loadAll();render();
   }
-  toast('All business data cleared ✓');await loadAll();render();
 }
 function exportBackup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='studio-redshine-cloud-backup.json';a.click()}
 boot();
